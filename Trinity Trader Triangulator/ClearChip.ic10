@@ -1,0 +1,9 @@
+clr db
+move r0 0
+start:
+add r0 1 r0
+move rr0 0
+beq r0 15 7
+j start
+move r0 0
+move ra 0

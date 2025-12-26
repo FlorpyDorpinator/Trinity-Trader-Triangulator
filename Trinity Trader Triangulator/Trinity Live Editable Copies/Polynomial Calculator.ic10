@@ -13,10 +13,10 @@
 #   Else R = v0*(1-alpha) + v1*alpha (linear interpolation)
 # - Clamps R to [0.01, 89.99]
 put db 13 0
-put db 14 0
+put db 12 0
 InitWaitLoop:
     yield
-    get r12 db 14
+    get r12 db 12
     beqal r12 2 TraderChoiceConversion
     beqal r12 3 ResetLoop
     beqz r12 InitWaitLoop
@@ -89,12 +89,10 @@ Init:
     One:
     yield
         lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
-        put r5 1 r0 #Put True V Into TrinityOne DB 1
+        put r5 1 r0
         get r6 db 5
-        put r5 0 r6 #Put True H Into TrinityOne DB 0
-        get r6 db 6
-        put r5 2 r6 #Put True Alpha Into TrinityOne DB 2
-        put db 14 0
+        put r5 0 r6
+        put db 12 0
         j ra
     Two:
     yield
@@ -102,9 +100,7 @@ Init:
         put r5 5 r0
         get r6 db 5
         put r5 4 r6
-        get r6 db 6
-        put r5 6 r6 
-        put db 14 0
+        put db 12 0
         j ra
     Three:
     yield
@@ -114,17 +110,15 @@ Init:
         put r5 8 r6
         put db 5 0
         put r5 12 1
-        get r6 db 6
-        put r5 10 r6 
-        put db 14 0
+        put db 12 0
         yield
    
-    put db 14 0
+    put db 12 0
     put db 13 0
 j InitWaitLoop
 
 ResetLoop:
-put db 14 0
+put db 12 0
 put db 13 0
 j ra
 

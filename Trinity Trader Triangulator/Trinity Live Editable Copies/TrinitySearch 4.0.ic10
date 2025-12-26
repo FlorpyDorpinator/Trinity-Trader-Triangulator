@@ -219,7 +219,7 @@ DataGatherThreeShot:
     put PolynomialSolver 0 TempStore                       # Send V angle for correction (dish offset)
     l TempStore MedSatRefID Horizontal        # Read current H angle
     put PolynomialSolver 5 TempStore                       # Send H angle to polynomial solver
-    put PolynomialSolver 14 1                        # Trigger polynomial corrector
+    put PolynomialSolver 12 1                        # Trigger polynomial corrector
     j ra                                # Return from subroutine
 # ============================================================================
 # WAIT FOR RESOLVE
