@@ -1,0 +1,104 @@
+#Stopwatch Code for Trader Finding
+define Satty HASH("StructureSatelliteDish")
+define Dial HASH("ModularDeviceDial")
+
+alias TraderChoice r1
+alias CurrentTraderLock r2
+alias HorizontalAngleValue r3
+alias VerticalAngleValue r4
+alias Dish r5
+alias IdleStatus r6
+alias CurrentDish r7
+alias DishHash r8
+alias WattsReaching r9
+alias SatRefID r10
+alias TimeValue r11
+alias PrevIdle r12
+alias Timing r13
+
+move HorizontalAngleValue 4
+move VerticalAngleValue 1
+move TimeValue 0
+move DishHash 0
+move CurrentDish 777
+move PrevIdle 1
+move Timing 0
+
+
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting 0
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Color 1
+sb HASH("StopWatch") On 0
+yield
+sb HASH("StopWatch") Activate 0
+yield
+sb HASH("StopWatch") On 1
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Mode 7
+lb SatRefID Satty ReferenceId Minimum
+
+Start:
+    lbn Dish Dial HASH("DishChoice") Setting Maximum
+    beq Dish CurrentDish Data
+    beq Dish 0 SmallDish
+    beq Dish 1 MediumDish
+    beq Dish 2 LargeDish
+    Data:
+        #// Wait until we positively observe movement (Idle == 0)
+        yield
+        lb IdleStatus DishHash Idle Minimum
+        beqz IdleStatus WaitForStop
+        j Data
+    WaitForStop:
+        #// Now wait for the 0 -> 1 transition (dish stopped)
+        yield
+        lb IdleStatus DishHash Idle Minimum
+        beqz IdleStatus WaitForStop
+    BeginTimeCheck:
+        sb HASH("StopWatch") On 1
+        sb HASH("StopWatch") Activate 1
+    TimerLoop:
+        yield
+        lb WattsReaching DishHash WattsReachingContact Minimum
+        lb TimeValue HASH("StopWatch") Time Maximum
+        sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+        lb IdleStatus DishHash Idle Minimum
+        beqz IdleStatus ResetWatch
+        beq WattsReaching -1 TimerLoop
+    Done:
+        sub TimeValue TimeValue 0.5
+        sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+    Data:
+        yield
+        lb IdleStatus DishHash Idle Minimum
+        beq IdleStatus 0 Moving
+        beq Timing 1 TimerLoop
+        beq PrevIdle 0 BeginTimeCheck
+        j Data
+    Moving:
+        move PrevIdle 0
+        beq Timing 1 ResetWatch
+        j Data
+    BeginTimeCheck:
+        move Timing 1
+        move PrevIdle 1
+        sb HASH("StopWatch") Activate 0
+        sb HASH("StopWatch") On 1
+        sb HASH("StopWatch") Activate 1
+    TimerLoop:
+        yield
+        lb WattsReaching DishHash WattsReachingContact Minimum
+        lb TimeValue HASH("StopWatch") Time Maximum
+        sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+        lb IdleStatus DishHash Idle Minimum
+        beqz IdleStatus Abort
+        beq WattsReaching -1 TimerLoop
+    Done:
+        sub TimeValue TimeValue 0.5
+        sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+        move Timing 0
+        j ResetWatch
+    Abort:
+        move Timing 0
+        j ResetWatch
+    ResetWatch:
+        sb HASH("StopWatch") Activate 0
+        j Start

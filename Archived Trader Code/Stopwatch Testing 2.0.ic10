@@ -1,0 +1,65 @@
+
+define Satty HASH("StructureSatelliteDish")
+define Dial HASH("ModularDeviceDial")
+
+alias TraderChoice r1
+alias CurrentTraderLock r2
+alias HorizontalAngleValue r3
+alias VerticalAngleValue r4
+alias SatRefID r10
+alias Dish r5
+alias DishHash r8
+alias CurrentDish r7
+lb SatRefID Satty ReferenceId Minimum
+move HorizontalAngleValue 4
+move VerticalAngleValue 1
+
+move r6 0
+
+sb HASH("ModularDeviceLEDdisplay3") Setting 0
+sb HASH("ModularDeviceLEDdisplay3") Color 1
+sb HASH("StopWatch") On 0
+sb HASH("StopWatch") On 1
+sb HASH("ModularDeviceLEDdisplay3") Mode 7
+move CurrentDish 5
+
+Start:
+lbn Dish Dial HASH("DishChoice") Setting Maximum
+beq Dish CurrentDish Data
+beq Dish 0 SmallDish
+beq Dish 1 MediumDish
+beq Dish 2 LargeDish
+Data:
+yield
+lb r5 DishHash Idle Maximum
+beq r5 1 Start
+WaitForMoveToFinish:
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting 0
+lb r5 DishHash Idle Maximum
+beqz r5 WaitForMoveToFinish
+lb r5 DishHash SignalStrength Maximum
+sb HASH("StopWatch") On 1
+sb HASH("StopWatch") Activate 1
+yield
+lb r5 DishHash SignalStrength Maximum
+lb r6 HASH("StopWatch") Time Maximum
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting r6
+breq r5 -1 -4
+ResetWatch:
+sb HASH("StopWatch") On 0
+yield
+sb HASH("StopWatch") Activate 0
+j Start
+
+SmallDish:
+move DishHash HASH("StructureSmallSatelliteDish")
+move CurrentDish 0
+j Data
+MediumDish:
+move DishHash HASH("StructureSatelliteDish")
+move CurrentDish 1
+j Data
+LargeDish:
+move DishHash HASH("StructureLargeSatelliteDish")
+move CurrentDish 2
+j Data

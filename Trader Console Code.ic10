@@ -1,0 +1,54 @@
+define SmallLED HASH("ModularDeviceLEDdisplay2")
+define Dial HASH("ModularDeviceDial")
+define P HASH("P")
+define H HASH("H")
+define V HASH("V")
+define SS HASH("SS")
+alias PData r1
+alias HData r2
+alias VData r3
+alias Dish r4
+alias DishHash r5
+alias SatIdle r6
+alias CurrentDish r7
+alias SignalStr r8
+sb HASH("ModularDeviceLight") Color 3
+
+start:
+lbn Dish Dial HASH("DishChoice") Setting Maximum
+beq Dish DishHash Data
+beq Dish 0 SmallDish
+beq Dish 1 MediumDish
+beq Dish 2 LargeDish
+Data:
+lb SatIdle DishHash Idle Maximum
+sb HASH("ModularDeviceLight") On SatIdle
+lb PData -377257892 Setting Maximum
+#lbn HData Dial H Setting Maximum
+#lbn VData Dial V Setting Maximum
+lb HData DishHash Horizontal Maximum
+lb VData DishHash Vertical Maximum
+sbn SmallLED P Setting PData
+sbn SmallLED H Setting HData
+sbn SmallLED V Setting VData
+#sb DishHash Setting PData
+#sb DishHash Horizontal HData
+#sb DishHash Vertical VData
+lb SignalStr DishHash SignalStrength Maximum
+sbn SmallLED SS Setting SignalStr
+j start
+
+
+
+SmallDish:
+move DishHash HASH("StructureSmallSatelliteDish")
+move CurrentDish 0
+j Data
+MediumDish:
+move DishHash HASH("StructureSatelliteDish")
+move CurrentDish 1
+j Data
+LargeDish:
+move DishHash HASH("StructureLargeSatelliteDish")
+move CurrentDish 2
+j Data

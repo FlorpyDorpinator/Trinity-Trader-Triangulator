@@ -1,0 +1,274 @@
+TRINITY TRADER TRIANGULATOR SYSTEM
+Complete Technical Documentation
+
+================================================================================
+SYSTEM OVERVIEW
+================================================================================
+
+The Trinity Triangulator is a multi-chip IC10 system designed to calculate the direction to a target (such as a trader ship) using measurements from three satellite dishes. Each dish provides an azimuth angle, elevation angle, and a distance-related value. The system processes these measurements through a pipeline of five IC10 chips to solve a 3D triangulation problem and output the final pointing direction.
+
+The Pipeline:
+TrinityAngleSolver → TrinityOne → TrinityTwo → TrinityThree → TrinityFour → Output
+
+
+================================================================================
+TRINITYANGLESOLVER.IC10
+================================================================================
+
+PLAIN ENGLISH DESCRIPTION:
+
+This script converts a distance ratio into an angle measurement. When a satellite dish detects a signal, it receives two distance-related values. The ratio between these values indicates how "off-center" the target is from the dish's pointing direction.
+
+The script uses piecewise linear interpolation to map this ratio to an angle between 0° and 180°:
+• A ratio near 1.0 means the target is directly where the dish is pointing → small angle (~0°)
+• A ratio near 0 means the target is far off to the side → large angle (up to 180°)
+
+The script processes measurements for three satellites sequentially, storing each calculated angle in TrinityOne at positions 2, 6, and 10.
+
+MATHEMATICAL EQUATIONS:
+
+Input Processing:
+   ratio = r₂ / max(r₁, 0.0000001)
+   scale₁ = 50000 / max(r₂, 0.0000001)
+   scale₂ = (10 × r₁) / max(scale₁ × r₂, 0.0000001)
+
+Piecewise Angle Calculation (θ):
+
+   If ratio ≥ 1:        θ = 0°
+   If 0.9 ≤ ratio < 1:  θ = 2 + 3 × (1 - ratio) / 0.1          → [2°, 5°]
+   If 0.1 ≤ ratio < 0.9: θ = 5 + 17.5 × (0.9 - ratio) / 0.8    → [5°, 22.5°]
+   If 0.05 ≤ ratio < 0.1: θ = 22.5 + 22.5 × (0.1 - ratio) / 0.05 → [22.5°, 45°]
+   If 0.01 ≤ ratio < 0.05: θ = 45 + 45 × (0.05 - ratio) / 0.04  → [45°, 90°]
+   If ratio < 0.01:      θ = 90 + 90 × (0.01 - ratio) / 0.009   → [90°, 180°]
+
+Final: θ_final = min(max(θ, 0), 180)
+
+
+================================================================================
+TRINITYONE.IC10
+================================================================================
+
+PLAIN ENGLISH DESCRIPTION:
+
+This script is the coordinate converter. It takes the spherical coordinates from each satellite dish (azimuth, elevation, and the calculated angle from TrinityAngleSolver) and converts them into 3D Cartesian unit direction vectors.
+
+Think of each satellite as pointing a laser beam in a direction. This script calculates the X, Y, and Z components of that direction in 3D space. It also applies an offset to account for which compass direction each dish is physically facing (North, East, South, West).
+
+After processing all three satellites, it produces 12 values (4 per satellite).
+
+MATHEMATICAL EQUATIONS:
+
+Input Variables (per satellite):
+   θ = Azimuth angle (horizontal direction, degrees)
+   φ = Elevation angle (vertical tilt, degrees)
+   α = Calculated angle from AngleSolver (degrees)
+   offset = Dish facing direction offset (degrees)
+
+Angle Adjustment:
+   θ' = (θ + offset + 360) mod 360
+
+Degree to Radian Conversion:
+   k = 0.017453292519943295 = π/180
+   θ_rad = θ' × k
+   φ_rad = φ × k
+   α_rad = α × k
+
+Cartesian Direction Vector:
+   x = sin(θ_rad) × cos(φ_rad)
+   y = cos(φ_rad)
+   z = cos(θ_rad) × cos(φ_rad)
+   w = cos(α_rad)
+
+Output: For each satellite i, vector vᵢ = (xᵢ, yᵢ, zᵢ, wᵢ)
+Total: 12 values sent to TrinityTwo
+
+
+================================================================================
+TRINITYTWO.IC10
+================================================================================
+
+PLAIN ENGLISH DESCRIPTION:
+
+This script builds a least-squares system of equations. Given three direction vectors from the satellites, we need to find where they all "intersect" in 3D space. Since real measurements have errors, they won't perfectly intersect at one point, so we use least-squares to find the best approximate solution.
+
+The script constructs the normal equations matrix by accumulating products of the direction components across all three satellites.
+
+Think of it as: "Given three lines pointing in different directions, where is the point that minimizes the total distance to all three lines?"
+
+MATHEMATICAL EQUATIONS:
+
+Input: Three direction vectors from TrinityOne:
+   v₁ = (x₁, y₁, z₁, w₁)
+   v₂ = (x₂, y₂, z₂, w₂)
+   v₃ = (x₃, y₃, z₃, w₃)
+
+Building the Normal Matrix (accumulate for i = 1, 2, 3):
+
+   Matrix coefficients (symmetric 3×3):
+   a = Σxᵢ²      b = Σxᵢyᵢ     c = Σxᵢzᵢ
+                 d = Σyᵢ²      e = Σyᵢzᵢ
+                               f = Σzᵢ²
+
+   Right-hand side vector:
+   g = Σwᵢxᵢ
+   h = Σwᵢyᵢ
+   k = Σwᵢzᵢ
+
+Matrix Form (A · p = b):
+
+   ┌ a  b  c ┐   ┌ pₓ ┐   ┌ g ┐
+   │ b  d  e │ × │ pᵧ │ = │ h │
+   └ c  e  f ┘   └ pᵤ ┘   └ k ┘
+
+Output: Nine values (a, b, c, d, e, f, g, h, k) sent to TrinityThree
+
+
+================================================================================
+TRINITYTHREE.IC10
+================================================================================
+
+PLAIN ENGLISH DESCRIPTION:
+
+This script calculates the cofactors and determinant of the 3×3 matrix built by TrinityTwo. These values are needed to solve the system of equations using Cramer's Rule.
+
+The cofactor matrix is essentially the "inverse ingredients" of the original matrix. The determinant tells us if the system has a unique solution (non-zero determinant) or if the measurements are degenerate.
+
+Think of this as preparing all the mathematical pieces needed to divide by the matrix in the next step.
+
+MATHEMATICAL EQUATIONS:
+
+Input Matrix:
+   ┌ a  b  c ┐
+   │ b  d  e │    with right-hand side (g, h, k)
+   └ c  e  f ┘
+
+Cofactor Calculation:
+   C₁₁ = d×f - e²
+   C₁₂ = c×e - b×f
+   C₁₃ = b×e - c×d
+   C₂₂ = a×f - c²
+   C₂₃ = b×c - a×e
+   C₃₃ = a×d - b²
+
+Determinant:
+   det(A) = a×C₁₁ + b×C₁₂ + c×C₁₃
+
+Expanded:
+   det(A) = a(df - e²) + b(ce - bf) + c(be - cd)
+
+Output: Ten values (C₁₁, C₁₂, C₁₃, C₂₂, C₂₃, C₃₃, det, g, h, k) sent to TrinityFour
+
+
+================================================================================
+TRINITYFOUR.IC10
+================================================================================
+
+PLAIN ENGLISH DESCRIPTION:
+
+This is the final solver that computes the target direction. It uses Cramer's Rule to solve the linear system, producing a 3D position vector. Then it normalizes this vector to unit length and converts it back to spherical coordinates (azimuth and elevation angles) that can be used to point a dish or display to the user.
+
+The output is:
+• Horizontal angle (H): The compass direction to the target (wrapped to 0-360°)
+• Vertical angle (V): The elevation above/below the horizon (0° to 180°)
+
+MATHEMATICAL EQUATIONS:
+
+Input from TrinityThree:
+   Cofactors: C₁, C₂, C₃, C₄, C₅, C₆
+   Determinant: D
+   Right-hand side: g, h, k
+
+Solve Using Cramer's Rule:
+   pₓ = (C₁×g + C₂×h + C₃×k) / D
+   pᵧ = (C₂×g + C₄×h + C₅×k) / D
+   pᵤ = (C₃×g + C₅×h + C₆×k) / D
+
+Normalize to Unit Vector:
+   magnitude = √(pₓ² + pᵧ² + pᵤ²)
+   x̂ = pₓ / magnitude
+   ŷ = pᵧ / magnitude
+   ẑ = pᵤ / magnitude
+
+Convert to Spherical Coordinates:
+
+   Horizontal distance: dₕ = √(x̂² + ẑ²)
+
+   Azimuth (H):
+      H_rad = atan2(ẑ, x̂)
+      H_deg = H_rad × 57.29577951308232
+      H = (90° - H_deg) mod 360°
+
+   Elevation (V):
+      V_rad = atan2(dₕ, ŷ)
+      V_deg = V_rad × 57.29577951308232
+      V = clamp(V_deg, 0°, 180°)
+
+FINAL OUTPUT:
+   ┌─────────────────────────────────────┐
+   │  H = Azimuth (compass direction)   │
+   │      Range: [0°, 360°)             │
+   │                                     │
+   │  V = Elevation angle               │
+   │      Range: [0°, 180°]             │
+   └─────────────────────────────────────┘
+
+
+================================================================================
+DATA FLOW DIAGRAM
+================================================================================
+
+  Satellite Dishes (×3)
+         │
+         │  Raw: distance1, distance2
+         ▼
+┌─────────────────────┐
+│  TrinityAngleSolver │  Converts distance ratio → angle θ
+└─────────────────────┘
+         │
+         │  Angles: θ₁, θ₂, θ₃
+         ▼
+┌─────────────────────┐
+│     TrinityOne      │  Converts spherical → Cartesian
+└─────────────────────┘
+         │
+         │  12 values: (x,y,z,w) × 3 satellites
+         ▼
+┌─────────────────────┐
+│     TrinityTwo      │  Builds least-squares normal matrix
+└─────────────────────┘
+         │
+         │  9 values: matrix A and vector b
+         ▼
+┌─────────────────────┐
+│    TrinityThree     │  Calculates cofactors and determinant
+└─────────────────────┘
+         │
+         │  10 values: cofactors, det, g, h, k
+         ▼
+┌─────────────────────┐
+│     TrinityFour     │  Solves system → spherical coordinates
+└─────────────────────┘
+         │
+         ▼
+   ┌───────────┐
+   │  H = 247° │  Azimuth
+   │  V = 85°  │  Elevation
+   └───────────┘
+
+
+================================================================================
+COMMUNICATION PROTOCOL
+================================================================================
+
+Chip              Waits for db[12]=   Sets db[12]=   Triggers
+─────────────────────────────────────────────────────────────
+AngleSolver       Non-zero            0              TrinityOne
+TrinityOne        Non-zero            1              TrinityTwo
+TrinityTwo        Non-zero            1              TrinityThree
+TrinityThree      Non-zero            1              TrinityFour
+TrinityFour       Non-zero            0              Output complete
+
+Each chip reads from its predecessor's database, processes data, writes to its 
+successor's database, then sets the trigger flag to signal completion.
+
+================================================================================

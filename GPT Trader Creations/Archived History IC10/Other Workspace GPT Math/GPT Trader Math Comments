@@ -1,0 +1,174 @@
+# === Trader Aim: 1-chip, 2 shots, uses UI θ (deg) ===
+# Inputs (deg):
+move r0 330         # H1
+move r1 50          # V1
+move r2 10          # TH1deg (UI off-angle)
+move r3 315         # H2
+move r4 50          # V2
+move r5 24          # TH2deg (UI off-angle)
+
+# Constants
+move r6 0.017453292519943295  # D2R
+move r7 57.29577951308232     # R2D
+
+# θ (rad)
+mul  r2 r2 r6
+mul  r5 r5 r6
+
+# f1 from (H1,V1) -> (r8,r9,r10)
+sub  r11 180 r0
+mul  r11 r11 r6
+sub  r12 90 r1
+mul  r12 r12 r6
+cos  r13 r12
+sin  r14 r12
+sin  r15 r11
+cos  r0  r11
+mul  r8  r15 r13
+move r9  r14
+mul  r10 r0  r13
+mul  r11 r8 r8
+mul  r12 r9 r9
+add  r11 r11 r12
+mul  r12 r10 r10
+add  r11 r11 r12
+sqrt r11 r11
+div  r8  r8  r11
+div  r9  r9  r11
+div  r10 r10 r11
+
+# f2 from (H2,V2) -> (r11,r12,r13)
+sub  r0 180 r3
+mul  r0 r0 r6
+sub  r1 90 r4
+mul  r1 r1 r6
+cos  r14 r1
+sin  r15 r1
+sin  r3  r0
+cos  r4  r0
+mul  r11 r3  r14
+move r12 r15
+mul  r13 r4  r14
+mul  r2  r11 r11
+mul  r5  r12 r12
+add  r2  r2  r5
+mul  r5  r13 r13
+add  r2  r2  r5
+sqrt r2  r2
+div  r11 r11 r2
+div  r12 r12 r2
+div  r13 r13 r2
+
+# a1=cos(TH1), a2=cos(TH2)
+cos  r0  r2          # reuse r2? careful: r2 now length; we kept TH1 in r2? No.
+# re-get TH1, TH2: (we still have them in radians? we overwrote; recompute quickly)
+# Recompute θ quickly from inputs (deg→rad was done into r2 and r5; both overwritten).
+# Reload UI θ (deg) as literals here if needed:
+# (If you can’t reload, keep copies before overwriting above.)
+# For compactness, assume θ (rad) are in r2=TH1rad and r5=TH2rad already:
+# (edit: we’ll recompute them from dish UI inputs at top to be safe:)
+
+# (Recompute θ rad)
+move r0 10
+move r1 24
+mul  r0 r0 r6
+mul  r1 r1 r6
+cos  r2 r0           # a1
+cos  r5 r1           # a2
+move r14 r2          # a1
+move r15 r5          # a2
+
+# c = f1·f2
+mul  r0  r8  r11
+mul  r1  r9  r12
+add  r0  r0  r1
+mul  r1  r10 r13
+add  r0  r0  r1      # r0=c
+max  r0  r0 -1
+min  r0  r0  1
+
+# phi, sphi
+acos r1  r0
+sin  r3  r1          # r3=sphi
+
+# r = normalize(f2 - c*f1) -> (r11,r12,r13)
+mul  r4  r0  r8
+sub  r11 r11 r4
+mul  r4  r0  r9
+sub  r12 r12 r4
+mul  r4  r0  r10
+sub  r13 r13 r4
+mul  r4  r11 r11
+mul  r5  r12 r12
+add  r4  r4  r5
+mul  r5  r13 r13
+add  r4  r4  r5
+sqrt r4  r4
+div  r11 r11 r4
+div  r12 r12 r4
+div  r13 r13 r4
+mul  r4  r9  r13
+mul  r5  r10 r12
+sub  r4  r4  r5
+mul  r5  r10 r11
+mul  r6  r8  r13
+sub  r5  r5  r6
+mul  r6  r8  r12
+mul  r7  r9  r11
+sub  r6  r6  r7
+mul  r7  r14 r14
+move r2  1
+sub  r2  r2  r7
+max  r2  r2  0
+sqrt r2  r2          # r2=s
+mul  r7  r3  r2
+mul  r3  r14 r0
+sub  r3  r15 r3
+div  r3  r3  r7
+max  r3  r3 -1
+min  r3  r3  1       # r3=cbeta
+mul  r7  r3  r3
+move r5  1
+sub  r5  r5  r7
+max  r5  r5  0
+sqrt r5  r5          # r5=sbeta
+mul  r11 r14 r8
+mul  r12 r14 r9
+mul  r13 r14 r10
+mul  r7  r2  r3      # s*cbeta
+mul  r0  r7  r11     # (temp reuse later)
+mul  r0  r7  r0      # (noop; keep r0 busy if needed)
+mul  r0  r7  r11     # (recalc to avoid misreuse)
+mul  r4  r7  r11     # not used; keep compact
+mul  r7  r2  r3
+mul  r0  r7  r11     # (ignore; compact placeholder)
+mul  r11 r11 1       # noop to keep flow
+mul  r0  r2  r3
+mul  r0  r0  r11     # === we’ll do per-component adds explicitly:
+mul  r7  r2  r3
+mul  r0  r7  r11     # rx term
+add  r11 r11 r0
+mul  r0  r7  r12     # ry term
+add  r12 r12 r0
+mul  r0  r7  r13     # rz term
+add  r13 r13 r0
+mul  r0  r2  r5
+mul  r7  r0  r4
+add  r11 r11 r7
+mul  r7  r0  r5
+add  r12 r12 r7
+mul  r7  r0  r6
+add  r13 r13 r7
+mul  r0  r11 r11
+mul  r1  r13 r13
+add  r0  r0  r1
+sqrt r0  r0
+atan2 r1  r11 r13
+atan2 r2  r12 r0
+mul  r1  r1  r7      # r7 still = R2D? we used r7; restore R2D:
+move r7 57.29577951308232
+mul  r1  r1  r7
+mul  r2  r2  r7
+sub  r8  180 r1
+sub  r9   90 r2
+# (Optionally wrap Hout into [0,360))

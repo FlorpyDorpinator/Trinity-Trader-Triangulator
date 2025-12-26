@@ -1,0 +1,86 @@
+[h1]Trinity Trader Triangulator - IC10 Scripts[/h1]
+
+A sophisticated multi-chip computer system for Stationeers that automatically locates and triangulates trader satellite positions using advanced 4-step matrix mathematics and polynomial angle correction.
+
+[h2]System Overview[/h2]
+
+The Triple T system uses [b]11 IC10 scripts[/b] across [b]9 chip housings[/b] to perform spiral scanning, three-shot triangulation, polynomial angle correction, and real-time status display.
+
+[hr][/hr]
+
+[h2]The Scripts[/h2]
+
+[h3]Core Control[/h3]
+[list]
+[*][b]TrinitySearch.ic10[/b] - Main controller that orchestrates scanning, triangulation, and user input
+[*][b]TrinityOS.ic10[/b] - Operating system with scrolling LED display showing 15 status messages
+[/list]
+
+[h3]4-Step Matrix Computer[/h3]
+[list]
+[*][b]TrinityOne.ic10[/b] - Converts angle measurements to directional vectors using trig calculations
+[*][b]TrinityTwo.ic10[/b] - Builds matrix for least-squares triangulation
+[*][b]TrinityThree.ic10[/b] - Computes matrix inverse using cofactor calculations
+[*][b]TrinityFour.ic10[/b] - Solves for final X, Y, Z coordinates
+[/list]
+
+[h3]Angle Correction[/h3]
+[list]
+[*][b]TrinityAngleSolver.ic10[/b] - Compensates for non-linear dish behavior with piecewise interpolation
+[*][b]TrinityPolynomial.ic10[/b] - Forward lookup: converts dish settings to true angles
+[*][b]TrinityPolynomial2.ic10[/b] - Inverse lookup: finds dish setting for desired angle
+[/list]
+
+[h3]Initialization[/h3]
+[list]
+[*][b]TrinityOS Stack Loader.ic10[/b] - Preloads 15 display messages (run once)
+[*][b]TrinityPolynomial Stack Loader.ic10[/b] - Loads 91-point correction table (run once)
+[/list]
+
+[hr][/hr]
+
+[h2]Quick Setup[/h2]
+
+[olist]
+[*]Create 9 chip housings: TrinitySearch, TrinityOS, TrinityAngleSolver, TrinityPolynomial, TrinityPolynomial2, TrinityOne, TrinityTwo, TrinityThree, TrinityFour
+[*]Run both Stack Loader scripts once to initialize data
+[*]Load the 9 operational scripts into their respective chip housings
+[*]Connect: satellite dish(es), Logic Dial, "Enter" and "Reset" buttons, 1×3 Console LED (labeled "TrinityOS")
+[*]Power on and press Enter to begin scanning
+[/olist]
+
+[h2]Usage[/h2]
+[list]
+[*][b]Enter button:[/b] Start search / Interrogate / Call down
+[*][b]Reset button:[/b] Restart system anytime
+[*][b]Logic Dial:[/b] Select which trader to triangulate
+[/list]
+
+[hr][/hr]
+
+[h2]Features[/h2]
+[list]
+[*]Automatic spiral scan pattern (0.9°H × 0.055°V)
+[*]Optimized three-shot triangulation (20°H × 5°V triangle)
+[*]Polynomial correction for dish non-linearity (91-point lookup table)
+[*]Distributed matrix math across 4 chips for complex calculations
+[*]Real-time scrolling status display
+[*]Automatic chip health monitoring
+[*]Full trader interrogation and call-down support
+[/list]
+
+[h2]Technical Specs[/h2]
+[list]
+[*]Scan: 0.9° horizontal × 0.055° vertical increments
+[*]Triangulation: Shot1(H+1°), Shot2(H+21° V+2.5°), Shot3(H+11° V-2.5°)
+[*]Angle range: 0-90° vertical, 0-360° horizontal
+[*]Display: 15 scrolling messages, 6-char chunks with bit-shift scrolling
+[*]Communication: db register data bus between chips
+[*]Math: Full floating-point precision throughout
+[/list]
+
+[hr][/hr]
+
+[b]Version:[/b] Trinity OS 1.0 | [b]Author:[/b] Mark (Larre) | [b]Platform:[/b] Stationeers IC10
+
+See README.md in the download for complete documentation and detailed installation instructions.

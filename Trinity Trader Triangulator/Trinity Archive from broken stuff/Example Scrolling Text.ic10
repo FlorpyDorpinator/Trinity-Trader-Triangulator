@@ -1,0 +1,171 @@
+# ============================================================================
+# WEATHER ALARM, MUSIC PLAYER, AND SCROLLING TEXT BANNER
+# Three-in-one system that:
+# 1. Monitors weather and plays alarm sounds with countdown
+# 2. Allows music selection via tablet button
+# 3. Displays scrolling text on two console LED panels (left and right)
+# ============================================================================
+#ignorelimits
+# Device aliases
+alias WStat d0          # Weather station - monitors incoming storms
+alias Harm d1           # Console with speaker - plays sounds
+alias Tablet d2         # Tablet for music selection input
+alias ConLeft d3        # Left console LED panel - displays left half of scrolling text
+alias ConRight d4       # Right console LED panel - displays right half of scrolling text
+
+# Register aliases
+alias TabAct r15        # Previous tablet activate state (for edge detection)
+alias TuneCycle r14     # Current music track number (7-9 = music tracks)
+alias CurrentTune r13   # Final selected sound to play (music or weather alarm)
+alias HarmSound r12     # Sound ID reference (18 = storm alarm, 7-9 = music)
+alias WeatherSound r11  # Weather alarm sound ID (based on time until storm)
+alias Timer r10         # Timer for weather alarm duration
+alias WeatherTimer r9   # Time remaining until next weather event (from weather station)
+alias SLeft r8          # String buffer for left console (holds 5 characters)
+alias SRight r7         # String buffer for right console (holds 5 characters)
+alias SBuffer r6        # Temporary buffer for character extraction
+alias SBuffer2 r5       # Secondary buffer for character swapping
+alias RBuffer r4        # Read buffer - holds current string from stack (6 characters)
+move TuneCycle 6        # Initialize to track 6 (will increment to 7 on first button press)
+
+# ============================================================================
+# INITIAL SETUP
+# ============================================================================
+s Harm Volume 25        # Set speaker volume to 25%
+s ConLeft Mode 10       # Set left console to string display mode
+s ConRight Mode 10      # Set right console to string display mode
+
+# ============================================================================
+# STRING STACK - Pre-load scrolling messages (read in reverse order)
+# Each string is 6 characters (padded with spaces)
+# Stack works LIFO (Last In, First Out), so last push is first pop
+# ============================================================================
+push STR("ase   ")      # "ase   " - will be popped 1st (end of message)
+push STR("can  B")      # "can  B"
+push STR("s  Vul")      # "s  Vul"
+push STR("Drake^")      # "Drake^" - ^ is probably a special character
+push STR("Shadow")      # "Shadow" - will be popped 5th (start of message)
+define maxsp 5          # Stack has 5 strings total
+move RBuffer 0          # Initialize read buffer to 0 (empty)
+
+# ============================================================================
+# MAIN LOOP
+# ============================================================================
+main:
+    # Check tablet button press for music selection
+    l r0 Tablet Activate            # Read current tablet activate state
+    l r1 WStat Mode                 # Read weather station mode
+    seq r1 r1 1                     # Check if Mode == 1 (storm incoming)
+    
+    # Update music track selection
+    jal TuneGet                     # Call function to handle tablet button press
+    
+    # Handle weather alarm (overrides music if storm is incoming)
+    bnezal r1 WeatherSet            # If storm incoming (r1==1), set weather alarm
+    
+    # Select which sound to play: music or weather alarm
+    select CurrentTune r0 TuneCycle 0       # If tablet pressed (r0!=0), use TuneCycle
+    select CurrentTune r1 WeatherSound CurrentTune  # If storm (r1!=0), use WeatherSound
+    
+    # ========================================================================
+    # STRING SCROLLER - Scrolls text across two 5-character LED displays
+    # RBuffer holds 6 chars. Characters flow: RBuffer → SRight → SLeft → (off screen)
+    # Each cycle extracts leftmost char from source and adds to right side of destination
+    # Visual effect: Text scrolls from RIGHT to LEFT across the displays
+    # ========================================================================
+    
+    # Get next string from stack if buffer is empty
+    beqzal RBuffer StringGet        # If RBuffer empty (==0), pop next string from stack
+    
+    # Extract LEFTMOST character from RBuffer (will go to rightmost position of SRight)
+    srl SBuffer RBuffer 40          # Shift right 40 bits to extract leftmost char (char 1 of 6)
+    brnez SBuffer 2                 # Skip if character exists
+    move SBuffer STR(" ")           # If empty, use space character
+    
+    # Extract LEFTMOST character from SRight (will go to rightmost position of SLeft)
+    srl SBuffer2 SRight 40          # Shift right 40 bits to extract leftmost char from SRight
+    brnez SBuffer2 2                # Skip if character exists
+    move SBuffer2 STR(" ")          # If empty, use space character
+    
+    # Shift SLeft left by 1 character and insert new char from SRight on the right side
+    sll SLeft SLeft 8               # Shift left 8 bits (leftmost char falls off, makes room on right)
+    ins SLeft 0 8 SBuffer2          # Insert character at position 0 (rightmost, bits 7-0)
+    
+    # Shift SRight left by 1 character and insert new char from RBuffer on the right side
+    sll SRight SRight 8             # Shift left 8 bits (leftmost char falls off, makes room on right)
+    ins SRight 0 8 SBuffer          # Insert character at position 0 (rightmost, bits 7-0)
+    
+    # Shift RBuffer left by 1 character (consume the leftmost character we just extracted)
+    sll RBuffer RBuffer 8           # Shift left 8 bits (leftmost char falls off)
+    
+end:
+    # ========================================================================
+    # OUTPUT - Update all devices with current values
+    # ========================================================================
+    s db Setting RBuffer            # Store RBuffer to IC housing for debugging/monitoring
+    s Harm SoundAlert CurrentTune   # Play selected sound (music or weather alarm)
+    s ConLeft Setting SLeft         # Display left half of scrolling text
+    s ConRight Setting SRight       # Display right half of scrolling text
+    yield                           # Let other scripts run
+    j main                          # Loop forever
+
+# ============================================================================
+# TUNE GETTER SUBROUTINE
+# Detects tablet button press (rising edge) and cycles through music tracks
+# Music tracks are numbered 7, 8, 9, then wrap back to 7
+# ============================================================================
+TuneGet:
+    breq TabAct r0 5                # If tablet state unchanged, skip (return + 5 instructions)
+    move TabAct r0                  # Update previous state
+    add TuneCycle TuneCycle 1       # Increment track number
+    brne TuneCycle 10 2             # If not at 10 yet, skip reset
+    move TuneCycle 7                # Wrap back to track 7 (cycles 7→8→9→7)
+    j ra                            # Return from subroutine
+
+# ============================================================================
+# WEATHER SET SUBROUTINE
+# Sets alarm sound based on time remaining until storm
+# Alarm gets more urgent as storm approaches (different sounds for each time bracket)
+# ============================================================================
+WeatherSet:
+    l WeatherTimer WStat NextWeatherEventTime   # Get seconds until next weather event
+    s Tablet Activate 0             # Turn off tablet (prevent music selection during alarm)
+    
+    # Timer management - keeps alarm playing for ~1 minute after trigger
+    add Timer Timer 1               # Increment timer each cycle
+    sgt r3 Timer 120                # Check if timer > 120 cycles (~1 minute at 0.5s/cycle)
+    select Timer r3 0 Timer         # Reset to 0 if > 120, otherwise keep current value
+    
+    # Play alarm for first 10 cycles (~5 seconds), then silence until next check
+    slt r0 Timer 10                 # Check if timer < 10
+    select WeatherSound r0 18 0     # If timer < 10, sound 18 (alarm), else 0 (silence)
+    
+    # Select alarm intensity based on time remaining until storm
+    # sap = "Set if Approximately" (checks if value ≈ target within tolerance)
+    sap r0 WeatherTimer 300 0.1     # If ~300s (5 min) until storm
+    select WeatherSound r0 33 WeatherSound  # Use sound 33 (distant warning)
+    
+    sap r0 WeatherTimer 240 0.1     # If ~240s (4 min) until storm
+    select WeatherSound r0 32 WeatherSound  # Use sound 32
+    
+    sap r0 WeatherTimer 180 0.1     # If ~180s (3 min) until storm
+    select WeatherSound r0 31 WeatherSound  # Use sound 31
+    
+    sap r0 WeatherTimer 120 0.1     # If ~120s (2 min) until storm
+    select WeatherSound r0 30 WeatherSound  # Use sound 30
+    
+    sap r0 WeatherTimer 60 0.1      # If ~60s (1 min) until storm
+    select WeatherSound r0 29 WeatherSound  # Use sound 29 (imminent warning)
+    
+    j ra                            # Return from subroutine
+
+# ============================================================================
+# STRING GET SUBROUTINE
+# Pops next string from stack into RBuffer
+# When stack is empty (sp==0), reset to maxsp (5) to loop through messages
+# ============================================================================
+StringGet:
+    brnez sp 2                      # If stack not empty, skip reset
+    move sp maxsp                   # Reset stack pointer to 5 (reload all strings)
+    pop RBuffer                     # Pop next string from stack into RBuffer
+    j ra                            # Return from subroutine

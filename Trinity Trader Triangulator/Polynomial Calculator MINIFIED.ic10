@@ -1,0 +1,101 @@
+put db 13 0
+put db 14 0
+InitWaitLoop:
+yield
+get r12 db 14
+beqal r12 2 TraderChoiceConversion
+beqal r12 3 ResetLoop
+beqz r12 InitWaitLoop
+move r0 0
+get r1 db r0
+max r1 r1 0
+min r1 r1 90
+floor r2 r1
+sub r3 r1 r2
+move r4 128
+add r4 r4 r2
+get r5 db r4
+add r6 r2 1
+min r6 r6 90
+move r7 128
+add r7 r7 r6
+get r8 db r7
+move r9 3
+get r10 db r9
+move r11 0.5
+sge r12 r10 r11
+move r13 r5
+move r15 1
+sub r15 r15 r3
+mul r14 r5 r15
+mul r15 r8 r3
+add r14 r14 r15
+select r0 r12 r13 r14
+move r15 0.01
+max r0 r0 r15
+move r15 89.99
+min r0 r0 r15
+move r15 1
+put db r15 r0
+move r15 2
+put db r15 r3
+get r1 db 13
+add r1 1 r1
+beqal r1 1 One
+beqal r1 2 Two
+beqal r1 3 Three
+put db 13 r1
+move r12 0
+j InitWaitLoop
+One:
+yield
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 1 r0
+get r6 db 5
+put r5 0 r6
+get r6 db 6
+put r5 2 r6
+put db 14 0
+j ra
+Two:
+yield
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 5 r0
+get r6 db 5
+put r5 4 r6
+get r6 db 6
+put r5 6 r6
+put db 14 0
+j ra
+Three:
+yield
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 9 r0
+get r6 db 5
+put r5 8 r6
+put db 5 0
+put r5 12 1
+get r6 db 6
+put r5 10 r6
+put db 14 0
+yield
+put db 14 0
+put db 13 0
+j InitWaitLoop
+ResetLoop:
+put db 14 0
+put db 13 0
+j ra
+TraderChoiceConversion:
+yield
+move r0 100
+move r1 1
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinitySearch") ReferenceId 1
+get r15 db 400
+mul r15 r15 10
+get r14 db r15
+put r5 r0 r14
+add r0 r0 1
+add r15 r15 1
+brne r0 103 -4
+j ResetLoop

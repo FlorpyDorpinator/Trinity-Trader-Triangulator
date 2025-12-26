@@ -1,0 +1,109 @@
+put db 0 7500
+put db 13 0
+put db 12 0
+InitWaitLoop:
+yield
+get r12 db 12
+beqal r12 3 ResetLoop
+beqz r12 InitWaitLoop
+move r0 0
+get r1 db r0
+move r0 1
+get r2 db r0
+max r1 r1 0.0000001
+div r3 r2 r1
+move r4 50000
+max r2 r2 0.0000001
+div r4 r4 r2
+move r5 10
+mul r5 r5 r1
+mul r6 r4 r2
+max r6 r6 0.0000001
+div r5 r5 r6
+sge r8 r3 1
+sge r9 r3 0.9
+sge r10 r3 0.1
+sge r11 r3 0.05
+sge r12 r3 0.01
+move r6 0.01
+sub r6 r6 r3
+move r7 0.009
+div r6 r6 r7
+move r7 90
+mul r6 r6 r7
+add r7 r6 r7
+move r6 0.05
+sub r6 r6 r3
+move r13 0.04
+div r6 r6 r13
+move r13 45
+mul r6 r6 r13
+add r6 r6 r13
+select r7 r12 r6 r7
+move r6 0.1
+sub r6 r6 r3
+move r13 0.05
+div r6 r6 r13
+move r13 22.5
+mul r6 r6 r13
+add r6 r6 r13
+select r7 r11 r6 r7
+move r6 0.9
+sub r6 r6 r3
+move r13 0.8
+div r6 r6 r13
+move r13 17.5
+mul r6 r6 r13
+move r13 5
+add r6 r6 r13
+select r7 r10 r6 r7
+move r6 1
+sub r6 r6 r3
+move r13 0.1
+div r6 r6 r13
+move r13 3
+mul r6 r6 r13
+move r13 2
+add r6 r6 r13
+select r7 r9 r6 r7
+move r6 0
+select r7 r8 r6 r7
+max r7 r7 0
+move r6 180
+min r7 r7 r6
+move r0 2
+put db r0 r7
+move r0 3
+put db r0 r3
+move r0 4
+put db r0 r4
+move r0 5
+put db r0 r5
+get r1 db 13
+add r1 1 r1
+beqal r1 1 One
+beqal r1 2 Two
+beqal r1 3 Three
+put db 13 r1
+move r12 0
+j InitWaitLoop
+One:
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 2 r7
+put db 12 0
+j ra
+Two:
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 6 r7
+put db 12 0
+j ra
+Three:
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+put r5 10 r7
+put db 13 0
+put db 12 0
+j InitWaitLoop
+ResetLoop:
+put db 12 0
+put db 13 0
+j ra

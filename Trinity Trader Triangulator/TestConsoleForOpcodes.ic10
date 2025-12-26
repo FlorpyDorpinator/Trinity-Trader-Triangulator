@@ -1,0 +1,73 @@
+# ignore r0, r1, r2
+
+alias TempStore r0                    
+alias SelectedTrader r1               
+alias DataStore r2           
+alias HorizontalAngleValue r3         
+alias VerticalAngleValue r4             
+alias FinalHorizontalAngleValue r5     
+alias FinalVerticalAngleValue r6      
+alias MedSatRefID r7                 
+alias LargeSatRefID r8                
+alias TempData r9
+alias Empty r10
+alias PolynomialSolver r11
+alias EnterButton r12
+alias ResetButton r13
+alias StoreRa r14
+
+
+define MedSat HASH("StructureSatelliteDish")
+define LargeSat HASH("StructureLargeSatelliteDish")
+lb MedSatRefID MedSat ReferenceId Minimum   # Load medium dish reference
+lb LargeSatRefID LargeSat ReferenceId Minimum  # Load large dish reference
+s MedSatRefID On 1
+
+ResetDish:
+    s MedSatRefID Horizontal 0          
+    s MedSatRefID Vertical 0            
+    s MedSatRefID Setting 500           
+    s MedSatRefID BestContactFilter -1 
+    move HorizontalAngleValue 0         
+    move VerticalAngleValue 0
+jal DishMovementYield                   
+
+StartSpiralScan:
+    yield                               # Allow other processes to run
+    s MedSatRefID Horizontal HorizontalAngleValue  # Set dish H position
+    s MedSatRefID Vertical VerticalAngleValue
+    s LargeSatRefID Horizontal HorizontalAngleValue  # Set dish H position
+    s LargeSatRefID Vertical VerticalAngleValue       # Set dish V position
+    jal UpdateCurrentStrongestSignal    # Check for trader signal
+    add HorizontalAngleValue 0.9 HorizontalAngleValue  # Increment H by 0.9°
+    add VerticalAngleValue 0.055 VerticalAngleValue  # Increment V by 0.055°
+    blt VerticalAngleValue 90 StartSpiralScan  # Contianue if V < 90°
+    j ResetDish                         # Reached top, reset and start over
+
+UpdateCurrentStrongestSignal:
+    put MedSatRefID 0 TraderInstruction.WriteTraderData  # Request trader data
+    get DataStore MedSatRefID 1  # Read trader metadata (packed format) # Shift right 16 bits
+    srl TempData DataStore 8
+    and TempData $FF TempData 
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("Type") Setting TempData
+    srl TempData DataStore 16
+    and TempData $FF TempData 
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("Tier") Setting TempData
+    srl TempData DataStore 24
+    and TempData $FF TempData 
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("Contacted") Setting TempData
+    get DataStore MedSatRefID 2  # Read trader metadata (packed format) # Shift right 16 bits
+    srl TempData DataStore 8
+    and TempData $FFFF TempData 
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("WattsR") Setting TempData
+    srl TempData DataStore 24
+    and TempData $FFFF TempData 
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("Lifetime") Setting TempData
+    j ra                                # Return from subroutine
+
+
+DishMovementYield:
+    yield                               # Allow other processes
+    l r0 MedSatRefID Idle              # Check if dish is idle (done moving)
+    beqz r0 DishMovementYield          # Loop until idle
+    j ra                                # Return from subroutine

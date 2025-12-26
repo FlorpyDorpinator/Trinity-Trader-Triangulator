@@ -1,0 +1,13 @@
+sb HASH("StopWatch") Activate 0
+sb HASH("StopWatch") Activate 1
+move r0 200
+move r1 0
+yield
+add r1 r1 1
+brlt r1 r0 -2
+lb r2 HASH("StopWatch") Time Maximum
+div r3 r2 r0
+move r4 0.5
+mul r4 r3 r4
+sbn HASH("StructureConsoleLED5") HASH("Tick") Setting r3
+sbn HASH("StructureConsoleLED5") HASH("Half") Setting r4

@@ -1,0 +1,43 @@
+
+define MedSat HASH("StructureSatelliteDish")
+
+
+alias TraderChoice r1
+alias CurrentTraderLock r2
+alias HorizontalAngleValue r3
+alias VerticalAngleValue r4
+alias SatRefID r10
+lb SatRefID HASH("StructureSatelliteDish") ReferenceId Minimum
+move HorizontalAngleValue 4
+move VerticalAngleValue 1
+
+move r6 0
+
+sb HASH("StructureConsoleLED5") Setting 0
+sb HASH("StructureConsoleLED5") Color 1
+sb HASH("StopWatch") On 0
+sb HASH("StopWatch") On 1
+sb HASH("StructureConsoleLED5") Mode 7
+
+
+Start:
+sb HASH("StopWatch") On 0
+yield
+l r5 SatRefID Idle
+bnez r5 Start
+TimeCheck:
+yield
+l r5 SatRefID Idle
+beqz r5 -3
+sb HASH("StopWatch") On 1
+sb HASH("StopWatch") Activate 1
+lb r6 HASH("StopWatch") Time Maximum
+sb HASH("StructureConsoleLED5") Setting r6
+l r5 SatRefID SignalStrength
+breq r5 -1 -3
+sb HASH("StopWatch") Activate 0
+move r6 0
+j Start
+
+
+####

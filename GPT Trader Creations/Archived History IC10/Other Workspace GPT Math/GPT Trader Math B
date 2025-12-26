@@ -1,0 +1,98 @@
+# Chip B (clean): f1,f2,a1,a2 -> Hout,Vout
+# In: r0=f1x r1=f1y r2=f1z r3=f2x r4=f2y r5=f2z r6=a1 r7=a2
+# Out:r14=Hout r15=Vout
+# c = dot
+mul  r8  r0 r3
+mul  r9  r1 r4
+add  r8  r8 r9
+mul  r9  r2 r5
+add  r8  r8 r9              # r8=c
+max  r8  r8 -1
+min  r8  r8  1
+# sphi
+acos r9  r8
+sin  r9  r9                 # r9=sphi
+# r = norm(f2 - c*f1)
+mul  r10 r8 r0
+sub  r10 r3 r10
+mul  r11 r8 r1
+sub  r11 r4 r11
+mul  r12 r8 r2
+sub  r12 r5 r12
+mul  r13 r10 r10
+mul  r15 r11 r11
+add  r13 r13 r15
+mul  r15 r12 r12
+add  r13 r13 r15
+sqrt r13 r13
+div  r10 r10 r13
+div  r11 r11 r13
+div  r12 r12 r13
+# n = f1 × r  -> (nx,ny,nz) in r13,r15,r4 (reuse)
+mul  r13 r1  r12
+mul  r15 r2  r11
+sub  r13 r13 r15            # nx
+mul  r15 r2  r10
+mul  r4  r0  r12
+sub  r15 r15 r4             # ny
+mul  r4  r0  r11
+mul  r5  r1  r10
+sub  r4  r4  r5             # nz
+# s = sqrt(max(0,1-a1^2))
+mul  r5  r6  r6
+move r14 1
+sub  r5  r14 r5
+max  r5  r5  0
+sqrt r5  r5                 # r5=s
+# cbeta = (a2 - a1*c)/(sphi*s)
+mul  r14 r6  r8             # a1*c
+sub  r14 r7  r14            # a2 - a1*c
+mul  r15 r9  r5             # denom
+div  r14 r14 r15            # cbeta
+max  r14 r14 -1
+min  r14 r14  1
+# sbeta
+mul  r15 r14 r14
+move r7  1
+sub  r15 r7  r15
+max  r15 r15 0
+sqrt r15 r15                # sbeta
+# T = a1*f1 + s*cbeta*r + s*sbeta*n  -> put into (r0,r1,r2)
+mul  r0  r6  r0
+mul  r1  r6  r1
+mul  r2  r6  r2
+# + s*cbeta*r
+mul  r7  r5  r14
+mul  r10 r7  r10
+add  r0  r0  r10
+mul  r10 r7  r11
+add  r1  r1  r10
+mul  r10 r7  r12
+add  r2  r2  r10
+# + s*sbeta*n (nx=r13, ny=r15?, nz=r4)  (careful: we overwrote r15)
+# Recompute sbeta into r7 to free r15
+mul  r7  r14 r14
+move r10 1
+sub  r7  r10 r7
+max  r7  r7 0
+sqrt r7  r7                 # r7 = sbeta
+mul  r10 r5  r7
+add  r0  r0  mul(r10,r13)   # IC10 has no fused mul-add; do it explicitly:
+mul  r11 r10 r13
+add  r0  r0  r11
+mul  r11 r10 r15
+add  r1  r1  r11
+mul  r11 r10 r4
+add  r2  r2  r11
+# back to H,V (south-facing)
+mul  r10 r0 r0
+mul  r11 r2 r2
+add  r10 r10 r11
+sqrt r10 r10
+atan2 r11 r0 r2             # Az
+atan2 r12 r1 r10            # El
+move r13 57.29577951308232
+mul  r11 r11 r13
+mul  r12 r12 r13
+sub  r14 180 r11
+sub  r15  90 r12

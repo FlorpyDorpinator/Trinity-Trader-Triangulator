@@ -1,0 +1,25 @@
+move r0 0
+move r1 0
+move r2 0
+move r6 0
+get r0 db r6
+add r6 1 r6
+get r1 db r6
+add r6 1 r6
+get r2 db r6
+
+mul r3 r0 r0
+mul r4 r2 r2
+add r3 r3 r4
+max r3 r3 0
+sqrt r3 r3
+
+atan2 r4 r0 r2
+atan2 r5 r1 r3
+
+move r7 57.29577951308232
+mul r4 r4 r7
+mul r5 r5 r7
+
+sub r14 180 r4
+sub r15 90 r5

@@ -1,0 +1,73 @@
+InitWaitLoop:
+    yield
+    get r0 db 12
+    beqz r0 InitWaitLoop
+ Init:
+    move r15 0
+    get r14 db r15
+    move rr15 r14
+    add r15 1 r15
+    brlt r15 12 -3
+    mul r12 r0 r4
+    mul r13 r1 r5
+    add r12 r12 r13
+    mul r13 r2 r6
+    add r12 r12 r13
+    mul r13 r12 r12
+    move r14 1
+    sub r13 r14 r13
+    max r13 r13 0
+    sqrt r13 r13
+    mul r14 r3 r12
+    sub r14 r7 r14
+    div r14 r14 r13
+    move r15 r14
+    mul r10 r12 r0
+    sub r4 r4 r10
+    mul r10 r12 r1
+    sub r5 r5 r10
+    mul r10 r12 r2
+    sub r6 r6 r10
+    div r4 r4 r13
+    div r5 r5 r13
+    div r6 r6 r13
+    mul r10 r1 r6
+    mul r12 r2 r5
+    sub r12 r10 r12
+    mul r10 r2 r4
+    mul r13 r0 r6
+    sub r13 r10 r13
+    mul r10 r0 r5
+    mul r14 r1 r4
+    sub r14 r10 r14
+    mul r10 r3 r0
+    mul r11 r15 r4
+    add r0 r10 r11
+    mul r10 r3 r1
+    mul r11 r15 r5
+    add r1 r10 r11
+    mul r10 r3 r2
+    mul r11 r15 r6
+    add r2 r10 r11
+    mul r10 r3 r3
+    mul r11 r15 r15
+    add r10 r10 r11
+    move r11 1
+    sub r10 r11 r10
+    max r10 r10 0
+    sqrt r6 r10
+    lbn r7 HASH("StructureCircuitHousingCompact") HASH("tri_finish") ReferenceId 1
+    put r7 0 r0
+    put r7 1 r1
+    put r7 2 r2
+    put r7 3 r12
+    put r7 4 r13
+    put r7 5 r14
+    put r7 6 r6
+    put r7 7 r8
+    put r7 8 r9
+    put r7 9 r10
+    put r7 10 r11
+    put r7 12 1
+    put db 12 0 #Reset the initwait loop
+    j InitWaitLoop

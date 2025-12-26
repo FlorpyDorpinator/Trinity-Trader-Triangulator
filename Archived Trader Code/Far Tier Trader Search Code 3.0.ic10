@@ -1,0 +1,111 @@
+#0 Is Close 1 is Med and 2 is far tier Trader
+
+alias SelectedTrader r1
+alias CurrentTraderLock r2
+alias HorizontalAngleValue r3
+alias VerticalAngleValue r4
+alias TraderID r5
+alias VertCounter r6
+alias VerticalCap r7
+alias SmallSatRefID r9
+alias MedSatRefID r10
+alias LargeSatRefID r11
+
+
+move HorizontalAngleValue 0
+move VerticalAngleValue 0
+move VertCounter 0
+move VerticalCap 90
+
+define MedSat HASH("StructureSatelliteDish")
+define LargeSat HASH("StructureLargeSatelliteDish")
+define TraderSelectDial HASH("StructureLogicDial")
+
+sb TraderSelectDial Mode 3
+lb MedSatRefID MedSat ReferenceId Minimum
+lb LargeSatRefID LargeSat ReferenceId Minimum
+sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Mode 0 #Can Chg Later LED
+sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Setting 0 #Can Chg Later LED
+sbn HASH("ModularDeviceLEDdisplay3") HASH("CTID") Mode 0 #Can Chg Later LED
+s MedSatRefID BestContactFilter -1
+
+
+InitiateTraderScan:
+    s MedSatRefID BestContactFilter -1
+    move TraderID 0
+    s MedSatRefID Horizontal 0
+    s MedSatRefID Vertical 0
+jal DishMovementYield
+
+CheckCurrentStrongest:
+    jal UpdateCurrentStrongestSignal
+    beq CurrentTraderLock FarTierTrader StartHoningIn
+
+ResetDish:
+    s MedSatRefID Horizontal 0
+    s MedSatRefID Vertical 0
+    s MedSatRefID Setting 500
+    s MedSatRefID BestContactFilter -1
+    jal DishMovementYield
+
+StartSpiralScan:
+    s MedSatRefID Horizontal HorizontalAngleValue
+    s MedSatRefID Vertical VerticalAngleValue
+    sleep 0.555556
+    jal UpdateCurrentStrongestSignal
+    beq CurrentTraderLock FarTierTrader StartHoningIn
+    add HorizontalAngleValue 1 HorizontalAngleValue
+    add VerticalAngleValue 0.07638888889 VerticalAngleValue
+    beq VerticalAngleValue 90 StartSpiralScanDown
+    j StartSpiralScan
+
+StartSpiralScanDown:
+    ResetDishForDown:
+        move VerticalAngleValue 90
+        move HorizontalAngleValue 0
+        s MedSatRefID Vertical VerticalAngleValue
+        s MedSatRefID Horizontal HorizontalAngleValue
+        jal DishMovementYield
+    SpiralDownLoop:
+        s MedSatRefID Horizontal HorizontalAngleValue
+        s MedSatRefID Vertical VerticalAngleValue
+        sleep 0.555556
+        jal UpdateCurrentStrongestSignal
+        beq CurrentTraderLock FarTierTrader StartHoningIn
+        add HorizontalAngleValue HorizontalAngleValue 1
+        sub VerticalAngleValue VerticalAngleValue 0.07638888889
+        beq VerticalAngleValue 0 StartSpiralScan 
+        j SpiralDownLoop
+    j ResetDish #If we never find it, restart.
+
+StartHoningIn:
+    move HorizontalAngleValue 4
+    move VerticalAngleValue 1
+    l TraderID MedSatRefID SignalID
+    s MedSatRefID BestContactFilter TraderID
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTID") Setting TraderID
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Setting TraderID
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Mode 10
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Setting STR("Done")#Code Break
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTID") Setting CurrentTraderLock#Code Break
+    jr 123#Code Break
+
+UpdateCurrentStrongestSignal:
+    put MedSatRefID 0 TraderInstruction.WriteTraderData
+    get CurrentTraderLock MedSatRefID 1
+    put db 1 CurrentTraderLock
+    srl CurrentTraderLock CurrentTraderLock 16
+    and CurrentTraderLock $FF CurrentTraderLock
+    sbn HASH("ModularDeviceLEDdisplay3") HASH("CTL") Setting CurrentTraderLock #Can Chg Later
+    j ra
+
+DishMovementYield:
+    yield
+    l r11 MedSatRefID Idle
+    beqz r11 DishMovementYield
+    j ra
+
+CheckSelectedTrader:
+    lb SelectedTrader TraderSelectDial Setting Minimum
+    j ra
+

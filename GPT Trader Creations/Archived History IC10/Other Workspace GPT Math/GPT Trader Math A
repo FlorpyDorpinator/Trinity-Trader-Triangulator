@@ -1,0 +1,51 @@
+# Chip A: (H1,V1,Ang1),(H2,V2,Ang2) -> f1,f2,a1,a2 (south-facing)
+# In: r0=H1 r1=V1 r2=Ang1 r3=H2 r4=V2 r5=Ang2  (degrees)
+# Out:r8=f1x r9=f1y r10=f1z r11=f2x r12=f2y r13=f2z r14=a1 r15=a2
+move r6 0.017453292519943295
+# a1,a2 = cos(theta_deg)
+cos  r14 r2
+cos  r15 r5
+# ---- f1 ----
+sub  r7 180 r0
+mul  r7 r7 r6
+sub  r5 90 r1
+mul  r5 r5 r6
+sin  r0 r7
+cos  r1 r7
+cos  r2 r5
+sin  r3 r5
+mul  r8 r0 r2
+move r9 r3
+mul  r10 r1 r2
+# norm f1
+mul  r7 r8 r8
+mul  r5 r9 r9
+add  r7 r7 r5
+mul  r5 r10 r10
+add  r7 r7 r5
+sqrt r7 r7
+div  r8 r8 r7
+div  r9 r9 r7
+div  r10 r10 r7
+# ---- f2 ----
+sub  r7 180 r3
+mul  r7 r7 r6
+sub  r5 90 r4
+mul  r5 r5 r6
+sin  r0 r7
+cos  r1 r7
+cos  r2 r5
+sin  r3 r5
+mul  r11 r0 r2
+move r12 r3
+mul  r13 r1 r2
+# norm f2
+mul  r7 r11 r11
+mul  r5 r12 r12
+add  r7 r7 r5
+mul  r5 r13 r13
+add  r7 r7 r5
+sqrt r7 r7
+div  r11 r11 r7
+div  r12 r12 r7
+div  r13 r13 r7

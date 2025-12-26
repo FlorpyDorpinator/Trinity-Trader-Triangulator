@@ -1,0 +1,160 @@
+# Inputs via DB indices 0..5: H1,V1,t1,H2,V2,t2 (degrees)
+# Outputs: r14=Hout (deg), r15=Vout (deg)
+
+# Read 6 inputs from DB into r0..r5
+move r6 0
+get r7 db r6
+move rr6 r7
+add r6 1 r6
+brlt r6 6 -3
+
+# Constants
+move r6 0.017453292519943295
+move r7 57.29577951308232
+
+# theta to radians
+mul r2 r2 r6
+mul r5 r5 r6
+
+# f1 from (H1,V1) -> r8,r9,r10
+sub r11 180 r0
+mul r11 r11 r6
+sub r12 90 r1
+mul r12 r12 r6
+cos r13 r12
+sin r14 r12
+sin r15 r11
+cos r0 r11
+mul r8 r15 r13
+move r9 r14
+mul r10 r0 r13
+mul r11 r8 r8
+mul r12 r9 r9
+add r11 r11 r12
+mul r12 r10 r10
+add r11 r11 r12
+sqrt r11 r11
+div r8 r8 r11
+div r9 r9 r11
+div r10 r10 r11
+
+# f2 from (H2,V2) -> r11,r12,r13
+sub r0 180 r3
+mul r0 r0 r6
+sub r1 90 r4
+mul r1 r1 r6
+cos r14 r1
+sin r15 r1
+sin r3 r0
+cos r4 r0
+mul r11 r3 r14
+move r12 r15
+mul r13 r4 r14
+mul r0 r11 r11
+mul r1 r12 r12
+add r0 r0 r1
+mul r1 r13 r13
+add r0 r0 r1
+sqrt r0 r0
+div r11 r11 r0
+div r12 r12 r0
+div r13 r13 r0
+
+# a1=cos(t1), a2=cos(t2)
+cos r14 r2
+cos r15 r5
+
+# c = f1·f2
+mul r0 r8 r11
+mul r1 r9 r12
+add r0 r0 r1
+mul r1 r10 r13
+add r0 r0 r1
+max r0 r0 -1
+min r0 r0 1
+
+# sphi
+acos r1 r0
+sin r1 r1
+
+# r = normalize(f2 - c*f1)
+mul r2 r0 r8
+sub r11 r11 r2
+mul r2 r0 r9
+sub r12 r12 r2
+mul r2 r0 r10
+sub r13 r13 r2
+mul r2 r11 r11
+mul r3 r12 r12
+add r2 r2 r3
+mul r3 r13 r13
+add r2 r2 r3
+sqrt r2 r2
+div r11 r11 r2
+div r12 r12 r2
+div r13 r13 r2
+
+# n = f1 × r -> r2,r3,r4 reuse
+mul r2 r9 r13
+mul r3 r10 r12
+sub r2 r2 r3
+mul r3 r10 r11
+mul r4 r8 r13
+sub r3 r3 r4
+mul r4 r8 r12
+mul r6 r9 r11
+sub r4 r4 r6
+
+# s = sqrt(max(0,1-a1^2)) into r5
+mul r5 r14 r14
+move r6 1
+sub r5 r6 r5
+max r5 r5 0
+sqrt r5 r5
+
+# cbeta = (a2 - a1*c)/(sphi*s) into r7
+mul r6 r14 r0
+sub r7 r15 r6
+mul r6 r1 r5
+div r7 r7 r6
+max r7 r7 -1
+min r7 r7 1
+
+# sbeta into r6
+mul r6 r7 r7
+move r1 1
+sub r6 r1 r6
+max r6 r6 0
+sqrt r6 r6
+
+# T = a1*f1 + s*cbeta*r + s*sbeta*n -> r8,r9,r10 become T
+mul r8 r14 r8
+mul r9 r14 r9
+mul r10 r14 r10
+mul r1 r5 r7
+mul r12 r1 r11
+add r8 r8 r12
+mul r12 r1 r12
+add r9 r9 r12
+mul r12 r1 r13
+add r10 r10 r12
+mul r1 r5 r6
+mul r12 r1 r2
+add r8 r8 r12
+mul r12 r1 r3
+add r9 r9 r12
+mul r12 r1 r4
+add r10 r10 r12
+
+# back to H,V
+mul r1 r8 r8
+mul r6 r10 r10
+add r1 r1 r6
+sqrt r1 r1
+atan2 r6 r8 r10
+atan2 r7 r9 r1
+move r12 57.29577951308232
+mul r6 r6 r12
+mul r7 r7 r12
+sub r14 180 r6
+sub r15 90 r7

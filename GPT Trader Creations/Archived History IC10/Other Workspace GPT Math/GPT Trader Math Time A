@@ -1,0 +1,33 @@
+In:
+r0=H1  r1=V1  r2=P1  r3=t1
+r4=H2  r5=V2  r6=P2  r7=t2
+r8=K   r9=m   r10=n
+Out (to pass into Chip B):
+r0=H1  r1=V1  r2=θ1
+r3=H2  r4=V2  r5=θ2
+
+
+
+
+# --- ANGLECALC.IC ---
+# compute noise-free angles from (H,V,P,t)
+div  r11 1 r10               # 1/n
+pow  r12 r2 r9               # P1^m
+mul  r12 r12 r3
+div  r12 r8 r12
+pow  r12 r12 r11
+max  r12 r12 -1
+min  r12 r12  1
+acos r12 r12
+move r13 57.29577951308232
+mul  r2 r12 r13              # θ1 deg
+pow  r12 r6 r9               # P2^m
+mul  r12 r12 r7
+div  r12 r8 r12
+pow  r12 r12 r11
+max  r12 r12 -1
+min  r12 r12  1
+acos r12 r12
+mul  r5 r12 r13              # θ2 deg
+move r3 r4                   # shift outputs (H2,V2)
+# r0..r5 now = H1,V1,θ1,H2,V2,θ2

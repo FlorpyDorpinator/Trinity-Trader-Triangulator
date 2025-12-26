@@ -1,0 +1,32 @@
+clr db
+move sp 0
+push 151.984533
+push 53.47410962
+push 12.6125
+push 0
+push 154.9869778
+push 50.63615362
+push 10.96458333
+push 0
+push 149.0120862
+push 58.99744244
+push 15.745
+push 0
+#Answer: 168 56
+
+
+clr db
+move sp 0
+push 317
+push 66.58
+push 9.7775
+push 0
+push 309.976
+push 59.15444
+push 17.17416667
+push 0
+push 314.99
+push 60.49866
+push 12.39666667
+push 0
+#Answer: 328 65

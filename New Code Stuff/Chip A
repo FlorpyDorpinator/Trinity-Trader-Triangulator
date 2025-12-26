@@ -1,0 +1,15 @@
+move r14 0
+get r15 db r14
+move rr14 r15
+add r14 1 r14
+brlt r14 9 -3
+move r15 0.0174532925199433
+mul r0 r0 r15
+mul r1 r1 r15
+mul r2 r2 r15
+mul r3 r3 r15
+mul r4 r4 r15
+mul r5 r5 r15
+mul r6 r6 r15
+mul r7 r7 r15
+mul r8 r8 r15

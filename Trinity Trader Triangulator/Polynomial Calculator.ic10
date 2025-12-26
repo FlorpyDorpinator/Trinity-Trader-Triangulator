@@ -1,0 +1,138 @@
+# True angle from dataset table with optional interpolation
+# Inputs:
+#   DB[0] = S (set angle, degrees)
+#   DB[3] = mode (0 = linear interpolation [default], >=0.5 = step/nearest-lower)
+# Outputs:
+#   DB[1] = R (true angle, degrees)
+#   DB[2] = alpha (fractional part of S, for diagnostics)
+# Implementation notes:
+# - Loads the provided 0..90 dataset into DB[128..218]
+# - Clamps S to [0,90]; computes n=floor(S), alpha=S-n
+# - v0 = table[n], v1 = table[min(n+1, 90)]
+# - If mode >= 0.5 => R = v0 (step lookup like Excel MATCH with 1)
+#   Else R = v0*(1-alpha) + v1*alpha (linear interpolation)
+# - Clamps R to [0.01, 89.99]
+put db 13 0
+put db 12 0
+InitWaitLoop:
+    yield
+    get r12 db 12
+    beqal r12 2 TraderChoiceConversion
+    beqal r12 3 ResetLoop
+    beqz r12 InitWaitLoop
+Init:
+    # Load inputs
+    move r0 0
+    get r1 db r0          # r1 = S
+    max r1 r1 0
+    min r1 r1 90
+
+    # n = floor(S), alpha = S - n
+    floor r2 r1           # r2 = n
+    sub r3 r1 r2          # r3 = alpha
+
+    # base address = 128 + n
+    move r4 128
+    add r4 r4 r2          # r4 = addr(n)
+
+    # v0 = table[n]
+    get r5 db r4
+
+    # v1 = table[min(n+1, 90)]
+    add r6 r2 1
+    min r6 r6 90
+    move r7 128
+    add r7 r7 r6
+    get r8 db r7
+
+    # mode flag from DB[3]
+    move r9 3
+    get r10 db r9
+
+    # If mode >= 0.5 -> step; else -> interpolate
+    move r11 0.5
+    sge r12 r10 r11       # r12=1 if step mode
+    # step result in r13
+    move r13 r5
+    # interp result in r14: v0*(1-alpha) + v1*alpha
+    move r15 1
+    sub r15 r15 r3
+    mul r14 r5 r15
+    mul r15 r8 r3
+    add r14 r14 r15
+
+    # select: r12? r13 : r14
+    select r0 r12 r13 r14
+
+    # Clamp to dataset endpoints [0.01, 89.99]
+    move r15 0.01
+    max r0 r0 r15
+    move r15 89.99
+    min r0 r0 r15
+
+    # Store outputs
+    move r15 1
+    put db r15 r0         # DB[1] = R
+    move r15 2
+    put db r15 r3         # DB[2] = alpha
+
+    BeginTrinityCountCheck:
+        get r1 db 13
+        add r1 1 r1
+        beqal r1 1 One
+        beqal r1 2 Two
+        beqal r1 3 Three
+        put db 13 r1
+        move r12 0
+        j InitWaitLoop
+
+    One:
+    yield
+        lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+        put r5 1 r0
+        get r6 db 5
+        put r5 0 r6
+        put db 12 0
+        j ra
+    Two:
+    yield
+        lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+        put r5 5 r0
+        get r6 db 5
+        put r5 4 r6
+        put db 12 0
+        j ra
+    Three:
+    yield
+        lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityOne") ReferenceId 1
+        put r5 9 r0
+        get r6 db 5
+        put r5 8 r6
+        put db 5 0
+        put r5 12 1
+        put db 12 0
+        yield
+   
+    put db 12 0
+    put db 13 0
+j InitWaitLoop
+
+ResetLoop:
+put db 12 0
+put db 13 0
+j ra
+
+TraderChoiceConversion:
+yield
+move r0 100 #Move register to 100 where the first result will be stored
+move r1 1 #Move register to 1 where the loop counter will be stored
+lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinitySearch") ReferenceId 1
+get r15 db 400 #Get the value from DB[400] to use as the starting index
+mul r15 r15 10 #Multiply the starting index by 10 to get local db start 
+get r14 db r15 #Get the value from local db (10, 20, 30 first time)
+put r5 r0 r14 #Put the that first value into 100 on the TrinitySearch db (then 101, 102)
+add r0 r0 1 #Increment the TrinitySearch Destination address
+add r15 r15 1 #Increment the local db source address by 1 (11,21,31 now first time)
+brne r0 103 -4 #Repeat 2 more times
+j ResetLoop
+#ignorelimits

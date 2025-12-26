@@ -1,0 +1,78 @@
+#Stopwatch Code for Trader Finding
+define Satty HASH("StructureSatelliteDish")
+define Dial HASH("ModularDeviceDial")
+
+alias TraderChoice r1
+alias CurrentTraderLock r2
+alias HorizontalAngleValue r3
+alias VerticalAngleValue r4
+alias Dish r5
+alias IdleStatus r6
+alias CurrentDish r7
+alias DishHash r8
+alias OffAngle r9
+alias SatRefID r10
+alias TimeValue r11
+
+move HorizontalAngleValue 4
+move VerticalAngleValue 1
+move TimeValue 0
+move DishHash 0
+move CurrentDish 777
+
+
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting 0
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Color 1
+sb HASH("StopWatch") On 0
+yield
+sb HASH("StopWatch") Activate 0
+yield
+sb HASH("StopWatch") On 1
+sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Mode 7
+lb SatRefID Satty ReferenceId Minimum
+
+Start:
+    lbn Dish Dial HASH("DishChoice") Setting Maximum
+    beq Dish CurrentDish Data
+    beq Dish 0 SmallDish
+    beq Dish 1 MediumDish
+    beq Dish 2 LargeDish
+    Data:
+        yield
+        lb IdleStatus DishHash Idle Minimum
+        beq IdleStatus 1 Start
+    WaitForMoveToFinish:
+        yield
+        lb IdleStatus DishHash Idle Minimum
+        sb HASH("StopWatch") On 0
+        beqz IdleStatus WaitForMoveToFinish
+    BeginTimeCheck:
+        sb HASH("StopWatch") On 1
+        sb HASH("StopWatch") Activate 1
+        yield
+        lb OffAngle DishHash SignalStrength Minimum
+        lb TimeValue HASH("StopWatch") Time Maximum
+        lb IdleStatus DishHash Idle Minimum
+        sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+        beqz IdleStatus ResetWatch
+        breq OffAngle -1 -6
+        #DelayAdjustment:
+            #add TimeValue TimeValue 0.5
+            #sbn HASH("ModularDeviceLEDdisplay3") HASH("Sec") Setting TimeValue
+    ResetWatch:
+        sb HASH("StopWatch") Activate 0
+        yield
+j Start
+
+SmallDish:
+    move DishHash HASH("StructureSmallSatelliteDish")
+    move CurrentDish 0
+    j Data
+MediumDish:
+    move DishHash HASH("StructureSatelliteDish")
+    move CurrentDish 1
+    j Data
+LargeDish:
+    move DishHash HASH("StructureLargeSatelliteDish")
+    move CurrentDish 2
+    j Data

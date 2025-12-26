@@ -1,0 +1,250 @@
+# ignore r2, r15
+# ============================================================================
+# TRINITY TRADER TRIANGULATOR v4.0 RESPAWN UPDATE 12-23-2025
+# Main search and triangulation controller
+# Uses 3-shot measurement pattern for accurate trader location
+#ChangeLog v4.0:
+# - Updated to handle trader 5 slots instead.
+# - Removed ability for system to find Basic & Utility Trader
+# - 
+# Changelog v1.9:
+# - Simplified triangulation to use single 6°H × 5°V triangle pattern for all angles
+# - Removed adaptive offset branching (was: 8°×8° for V≤70°, 6°×5° for V>70°)
+# - New pattern: Shot 1 (H+1,V), Shot 2 (H+7,V+2.5), Shot 3 (H+4,V+5)
+# - Triangle stays to the left of initial detection (matches spiral scan geometry)
+# - Prevents V=90° overshoot while maintaining good triangulation geometry
+# - Reduced code complexity without sacrificing accuracy
+# - Adjuste sleep time from 25 to a wait for resolve loop
+#ignorelimits
+# Changelog v1.8:
+# - Used smaller V increment (0.055°) for more precise spiral scanning
+# - Helps locate traders that might be missed with larger increments
+# ============================================================================
+
+###
+
+Init_Preload:
+# ============================================================================
+# REGISTER ALIASES - Make code readable
+# ============================================================================
+alias TempStore r0                      # Temporary value storage
+alias SelectedTrader r1                 # Trader tier to search for (0=Close, 1=Med, 2=Far)
+alias CurrentTraderLock r2              # Currently detected trader tier from dish
+alias HorizontalAngleValue r3           # Current horizontal angle (0-360°)
+alias VerticalAngleValue r4             # Current vertical angle (0-90°)
+alias FinalHorizontalAngleValue r5      # Final calculated H angle from solver
+alias FinalVerticalAngleValue r6        # Final calculated V angle from solver     # Small satellite dish reference (unused)
+alias MedSatRefID r7                   # Medium satellite dish reference
+alias LargeSatRefID r8                 # Large satellite dish reference (unused)
+alias TrinityOS r9
+#Register 10 currently unused
+alias PolynomialSolver r11
+alias EnterButton r12
+alias ResetButton r13
+alias StoreRa r14
+#Register 15 currently unused
+# ============================================================================
+# DEVICE DEFINITIONS - Hash names for devices
+# ============================================================================
+define MedSat HASH("StructureSatelliteDish")
+define LargeSat HASH("StructureLargeSatelliteDish")
+# ============================================================================
+# Loading RefIDs for devices - connect to IC10 Housings
+# ============================================================================
+lbn TrinityOS 2037291645 HASH("TrinityOS") ReferenceId 1
+lbn PolynomialSolver 2037291645 HASH("TrinityPolynomial") ReferenceId 1
+lbn EnterButton HASH("StructureLogicButton") HASH("Enter") ReferenceId 1
+lbn ResetButton HASH("StructureLogicButton") HASH("Reset") ReferenceId 1
+# ============================================================================
+# INITIAL SETUP - Configure devices
+# ============================================================================
+lb MedSatRefID MedSat ReferenceId Minimum   # Load medium dish reference
+lb LargeSatRefID LargeSat ReferenceId Minimum  # Load large dish reference
+s MedSatRefID On 1
+# ============================================================================
+# RESET DISH - Return to starting position
+# ============================================================================
+ResetDish:
+    put db 12 0
+    put PolynomialSolver 13 0
+    s MedSatRefID Horizontal 0          # Point to H=0° (north)
+    s MedSatRefID Vertical 0            # Point to V=0° (horizon)
+    s MedSatRefID Setting 500           # Set power to 500W for scanning
+    s MedSatRefID BestContactFilter -1  # Disable contact filtering (see all traders)
+    move HorizontalAngleValue 0         # Reset H tracking variable
+    move VerticalAngleValue 0           # Reset V tracking variable
+jal DishMovementYield                   # Wait for dish to reach position
+put MedSatRefID 0 TraderInstruction.WriteTraderData
+# ============================================================================
+# WAIT FOR START BUTTON
+# ============================================================================
+yield
+s MedSatRefID On 0
+s LargeSatRefID On 0
+WaitForInit:
+l TempStore EnterButton Activate  # Check if start button pressed
+beq TempStore 0 WaitForInit             # Loop until button pressed
+put TrinityOS 511 6
+yield
+WaitForInit2:
+l TempStore EnterButton Activate  # Check if start button pressed
+beq TempStore 0 WaitForInit2           # Loop until button pressed
+
+# ============================================================================
+# SPIRAL SCAN - Search for trader using Archimedean spiral pattern
+# Scans from V=0° to V=90° in 0.9° H × 0.055° V increments
+# ============================================================================
+put TrinityOS 511 7
+s MedSatRefID On 1
+s LargeSatRefID On 1
+StartSpiralScan:
+    yield                               # Allow other processes to run
+    jal ResetCheck
+    s MedSatRefID Horizontal HorizontalAngleValue  # Set dish H position
+    s MedSatRefID Vertical VerticalAngleValue
+    s LargeSatRefID Horizontal HorizontalAngleValue  # Set dish H position
+    s LargeSatRefID Vertical VerticalAngleValue       # Set dish V position
+    jal UpdateCurrentStrongestSignal    # Check for trader signal
+    move TempStore 100
+    jal IterateShuttleType
+    jal IterateShuttleType
+    jal IterateShuttleType
+    add HorizontalAngleValue 0.9 HorizontalAngleValue  # Increment H by 0.9°
+    add VerticalAngleValue 0.055 VerticalAngleValue  # Increment V by 0.055°
+    blt VerticalAngleValue 90 StartSpiralScan  # Continue if V < 90°
+    j ResetDish                         # Reached top, reset and start over
+
+# ============================================================================
+# THREE-SHOT TRIANGULATION PROCEDURE
+# Takes 3 measurements in a triangle pattern to calculate exact position
+# Pattern: Shot 1 (H+1,V), Shot 2 (H+7,V+2.5), Shot 3 (H+4,V+5)
+# Creates 6°H × 5°V triangle - safe at all angles, good geometry
+# ============================================================================
+InitThreeShotProcedure:
+    l TempStore MedSatRefID SignalID
+    s MedSatRefID BestContactFilter TempStore
+    s LargeSatRefID BestContactFilter TempStore
+    put TrinityOS 511 8
+    s MedSatRefID Setting 7500          # Increase power to 7500W for precise measurements
+    add HorizontalAngleValue HorizontalAngleValue 1  # Move +1° H from lock position
+    s MedSatRefID Horizontal HorizontalAngleValue    # Apply position
+    jal DishMovementYield               # Wait for dish movement
+    jal WaitForResolve          # Wait for signal to stabilize
+    jal DataGatherThreeShot             # SHOT 1: Gather first measurement
+    
+    # Optimized triangle pattern for all angles
+    # Shot 1: (H+1, V) - near initial detection
+    # Shot 2: (H+21, V+2.5) - far left, slightly down
+    # Shot 3: (H+11, V-2.5) - middle, back up (forms proper triangle)
+    # Creates ~20°H × 5°V triangle with excellent geometry
+    add HorizontalAngleValue HorizontalAngleValue 20  # +20° H (move far left)
+    add VerticalAngleValue VerticalAngleValue 2.5     # +2.5° V (move down)
+    min VerticalAngleValue VerticalAngleValue 90      # Clamp at V=90°
+    s MedSatRefID Horizontal HorizontalAngleValue
+    s MedSatRefID Vertical VerticalAngleValue
+    jal DishMovementYield               # Wait for movemen
+    jal WaitForResolve
+    jal DataGatherThreeShot             # SHOT 2: Second measurement
+    
+    sub HorizontalAngleValue HorizontalAngleValue 10  # -10° H (move back right)
+    sub VerticalAngleValue VerticalAngleValue 5       # -5° V (move back up)
+    max VerticalAngleValue VerticalAngleValue 0       # Clamp at V=0° (zenith)
+    s MedSatRefID Horizontal HorizontalAngleValue
+    s MedSatRefID Vertical VerticalAngleValue
+    jal DishMovementYield               # Wait for movement
+    jal WaitForResolve          # Wait for signal stabilization
+    jal DataGatherThreeShot             # SHOT 3: Third measurement
+
+
+# ============================================================================
+# WAIT FOR SOLVER AND POINT TO TRUE LOCATION
+# ============================================================================
+SetTrueTraderLocation:
+    put TrinityOS 511 10
+    get TempStore db 12                       # Check if solver finished
+    beqz TempStore SetTrueTraderLocation  
+    put db 12 0         # Wait for solver to complete
+    get FinalHorizontalAngleValue db 43 # Get calculated H angle from solver
+    get FinalVerticalAngleValue db 44   # Get calculated V angle from solver
+    yield
+    s MedSatRefID Horizontal FinalHorizontalAngleValue  # Point to exact location
+    s MedSatRefID Vertical FinalVerticalAngleValue
+    s LargeSatRefID Horizontal FinalHorizontalAngleValue  # Point to exact location
+    s LargeSatRefID Vertical FinalVerticalAngleValue
+    put TrinityOS 511 11 #Tell OS that it can take over interrogation now
+# ============================================================================
+# WAIT FOR TRINITYOS TO COMPLETE INTERROGATION AND CALL DOWN
+# ============================================================================     
+    put db 12 0 
+    yield                   
+    get TempStore db 12                
+    breqz TempStore -2                      
+    j ResetDish                         
+
+    
+# ============================================================================
+# UPDATE CURRENT STRONGEST SIGNAL
+# Reads trader data from dish and extracts tier information
+# ============================================================================
+UpdateCurrentStrongestSignal:
+    put MedSatRefID 0 TraderInstruction.WriteTraderData
+    get TempStore MedSatRefID 1 
+    srl CurrentTraderLock TempStore 8
+    and CurrentTraderLock $FF CurrentTraderLock 
+    get TempStore MedSatRefID 2
+    srl TempStore TempStore 8
+    and TempStore $FFFF TempStore
+    add CurrentTraderLock TempStore CurrentTraderLock
+    j ra                               
+# ============================================================================
+# DISH MOVEMENT YIELD
+# Waits until dish finishes moving to commanded position
+# ============================================================================
+DishMovementYield:
+    yield                               # Allow other processes
+    l TempStore MedSatRefID Idle              # Check if dish is idle (done moving)
+    beqz TempStore DishMovementYield          # Loop until idle
+    j ra                                # Return from subroutine
+
+# ============================================================================
+# DATA GATHER THREE SHOT
+# Sends measurement data to solver chips
+# Sends: SignalStrength, Vertical angle, Horizontal angle
+# ============================================================================
+DataGatherThreeShot:
+    put TrinityOS 511 9
+    l TempStore MedSatRefID SignalStrength  # Read signal strength (watts)
+    put PolynomialSolver 6 TempStore                       # Send Angle Off to Poly Solver                  
+    l TempStore MedSatRefID Vertical          # Read current V angle
+    put PolynomialSolver 0 TempStore                       # Send V angle for correction (dish offset)
+    l TempStore MedSatRefID Horizontal        # Read current H angle
+    put PolynomialSolver 5 TempStore                       # Send H angle to polynomial solver
+    put PolynomialSolver 12 1                        # Trigger polynomial corrector
+    j ra                                # Return from subroutine
+# ============================================================================
+# WAIT FOR RESOLVE
+# Waits for the trader signal to be resolved  (the green bar to be filled)
+# Sends the script back to where it was
+# ============================================================================
+WaitForResolve:
+move StoreRa ra
+yield
+jal ResetCheck
+l TempStore MedSatRefID SignalStrength
+brltz TempStore -3
+j StoreRa
+
+# ============================================================================
+# RESET CHECK, SEND TO OS, POLYNOMIAL SOLVER, ANGLE SOLVER
+# ============================================================================
+ResetCheck:
+    l TempStore ResetButton Activate
+    beqz TempStore ra
+    put TrinityOS 511 0
+    j ResetDish
+
+IterateShuttleType:
+    get SelectedTrader db TempStore
+    beq CurrentTraderLock SelectedTrader InitThreeShotProcedure  # Found it!
+    add TempStore TempStore 1
+    j ra

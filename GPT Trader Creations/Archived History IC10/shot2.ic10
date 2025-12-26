@@ -1,0 +1,25 @@
+move r15 0
+get r14 db r15
+move rr15 r14
+add r15 1 r15
+brlt r15 3 -3
+move r14 0.017453292519943295
+move r6 r2
+mul r6 r6 r14
+cos r6 r6
+sub r8 180 r0
+mul r8 r8 r14
+sub r9 90 r1
+mul r9 r9 r14
+cos r4 r9
+sin r5 r9
+sin r2 r8
+mul r0 r2 r5
+move r1 r4
+cos r2 r8
+mul r2 r2 r5
+lbn r10 HASH("StructureCircuitHousingCompact") HASH("tri_basis") ReferenceId 1
+put r10 4 r0
+put r10 5 r1
+put r10 6 r2
+put r10 7 r6

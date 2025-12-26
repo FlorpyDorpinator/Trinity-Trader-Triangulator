@@ -1,0 +1,110 @@
+InitWaitLoop:
+    yield
+    get r0 db 12
+    beqz r0 InitWaitLoop
+Init:
+   move r8 0
+   move r9 0
+   move r10 0
+   move r11 0
+   move r12 0
+   move r13 0
+   move r14 0
+   move r15 0
+   move r7 0
+
+   move r0 0
+   get r1 db r0
+   move r0 1
+   get r2 db r0
+   move r0 2
+   get r3 db r0
+   move r0 3
+   get r4 db r0
+   mul r5 r1 r1
+   add r8 r8 r5
+   mul r5 r1 r2
+   add r9 r9 r5
+   mul r5 r1 r3
+   add r10 r10 r5
+   mul r5 r2 r2
+   add r11 r11 r5
+   mul r5 r2 r3
+   add r12 r12 r5
+   mul r5 r3 r3
+   add r13 r13 r5
+   mul r5 r4 r1
+   add r14 r14 r5
+   mul r5 r4 r2
+   add r15 r15 r5
+   mul r5 r4 r3
+   add r7 r7 r5
+
+   move r0 4
+   get r1 db r0
+   move r0 5
+   get r2 db r0
+   move r0 6
+   get r3 db r0
+   move r0 7
+   get r4 db r0
+   mul r5 r1 r1
+   add r8 r8 r5
+   mul r5 r1 r2
+   add r9 r9 r5
+   mul r5 r1 r3
+   add r10 r10 r5
+   mul r5 r2 r2
+   add r11 r11 r5
+   mul r5 r2 r3
+   add r12 r12 r5
+   mul r5 r3 r3
+   add r13 r13 r5
+   mul r5 r4 r1
+   add r14 r14 r5
+   mul r5 r4 r2
+   add r15 r15 r5
+   mul r5 r4 r3
+   add r7 r7 r5
+
+   move r0 8
+   get r1 db r0
+   move r0 9
+   get r2 db r0
+   move r0 10
+   get r3 db r0
+   move r0 11
+   get r4 db r0
+   mul r5 r1 r1
+   add r8 r8 r5
+   mul r5 r1 r2
+   add r9 r9 r5
+   mul r5 r1 r3
+   add r10 r10 r5
+   mul r5 r2 r2
+   add r11 r11 r5
+   mul r5 r2 r3
+   add r12 r12 r5
+   mul r5 r3 r3
+   add r13 r13 r5
+   mul r5 r4 r1
+   add r14 r14 r5
+   mul r5 r4 r2
+   add r15 r15 r5
+   mul r5 r4 r3
+   add r7 r7 r5
+
+   lbn r6 HASH("StructureCircuitHousingCompact") HASH("TrinityThree") ReferenceId 1
+   put r6 0 r8
+   put r6 1 r9
+   put r6 2 r10
+   put r6 3 r11
+   put r6 4 r12
+   put r6 5 r13
+   put r6 6 r14
+   put r6 7 r15
+   put r6 8 r7
+   put db 12 0
+   yield
+   put r6 12 1
+j InitWaitLoop

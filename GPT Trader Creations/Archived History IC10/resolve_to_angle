@@ -1,0 +1,44 @@
+move r0 0
+move r1 0
+move r2 0
+move r6 0
+get r0 db r6
+add r6 1 r6
+get r1 db r6
+add r6 1 r6
+get r2 db r6
+move r3 10
+mul r4 r3 r0
+mul r5 r2 r1
+div r8 r4 r5
+min r8 r8 1
+max r8 r8 0.001
+move r10 30
+move r11 21.875
+move r12 450
+move r13 1125
+move r15 10000
+brgt r8 0.9 20
+brgt r8 0.1 15
+brgt r8 0.05 10
+brgt r8 0.01 5
+sub r6 0.01 r8
+mul r6 r6 r15
+add r2 r6 90
+brgt r8 0 0
+sub r6 0.05 r8
+mul r6 r6 r13
+add r2 r6 45
+brgt r8 0 0
+sub r6 0.1 r8
+mul r6 r6 r12
+add r2 r6 22.5
+brgt r8 0 0
+sub r6 0.9 r8
+mul r6 r6 r11
+add r2 r6 5
+brgt r8 0 0
+move r6 1
+sub r6 r6 r8
+mul r6 r6 r10
+add r2 r6 2

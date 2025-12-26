@@ -1,0 +1,105 @@
+# ignore r1, r10, r11, r12, r13, r14, r15, r2, r3, r4, r5, r6, r7, r8, r9
+define LargeLED HASH("StructureConsoleLED1x3")
+sbn LargeLED HASH("TrinityOS") Mode 10  # Set LED to string display mode
+sbn LargeLED HASH("TrinityOS") Setting STR("LoadOS")
+define TraderSelectDial HASH("StructureLogicDial")
+sb TraderSelectDial Mode 2              # Set dial to mode 2 (0-2 range for trader tiers)
+lbn r0 2037291645 HASH("TrinityPolynomial") ReferenceId Maximum
+put r0 13 0
+lbn r0 2037291645 HASH("TrinityAngleSolver") ReferenceId Maximum
+put r0 13 0
+move r0 0
+move r1 0
+move r2 0
+move r3 0
+move r4 0
+move r5 0
+move r6 0
+move r7 0
+move r8 0
+move r9 0
+move r10 0
+move r11 0
+move r12 0
+move r13 0
+move r14 0
+move r15 0
+clr db
+push 0
+push 69
+push 65
+push 62
+push 58
+push 55
+push 51
+push 47
+push 44
+push 41
+push 37
+push 33
+push 30
+push 26
+push 23
+push 19
+push STR("ing...") # Part 2 OpCode: 15
+push STR("Resett") # Part 1
+push 2
+push STR("aching") # Part 3 OpCode: 14
+push STR(" Appro") # Part 2
+push STR("Trader") # Part 1
+push 3
+push STR("own?  ") # Part 2 OpCode: 13
+push STR("Call d") # Part 1
+push 2
+push STR("g...  ") # Part 3 OpCode: 12
+push STR("ogatin") # Part 2
+push STR("Interr") # Part 1
+push 3
+push STR("ogate?") # Part 2 OpCode: 11
+push STR("Interr") # Part 1
+push 2
+push STR("er... ") # Part 3 OpCode: 10
+push STR("g Trad") # Part 2
+push STR("Lockin") # Part 1
+push 3
+push STR("g.... ") # Part 3 OpCode: 9
+push STR("ulatin") # Part 2
+push STR("Triang") # Part 1
+push 3
+push STR(" Found") # Part 2 OpCode: 8
+push STR("Trader") # Part 1
+push 2
+push STR("ing...") # Part 2 OpCode: 7
+push STR("Search") # Part 1
+push 2
+push STR("?     ") # Part 3 OpCode: 6
+push STR("Search") # Part 2
+push STR("Begin ") # Part 1
+push 3
+push STR("r     ") # Part 3 OpCode: 5
+push STR(" Trade") # Part 2
+push STR("Choose") # Part 1
+push 3
+push STR("inal  ") # Part 2 OpCode: 4
+push STR("OS Nom") # Part 1
+push 2
+push STR("ousing") # Part 3 OpCode: 3
+push STR("Chip H") # Part 2
+push STR("Error ") # Part 1
+push 3
+push STR("g     ") # Part 2 OpCode: 2
+push STR("Bootin") # Part 1
+push 2
+push STR(".0    ") # Part 3 OpCode: 1
+push STR("y OS 1") # Part 2
+push STR("Trinit") # Part 1
+push 3
+push HASH("TrinityOS")
+push HASH("TrinitySearch")
+push HASH("TrinityOne")
+push HASH("TrinityTwo")
+push HASH("TrinityThree")
+push HASH("TrinityFour")
+push HASH("TrinityPolynomial")
+push HASH("TrinityPolynomial2")
+push HASH("TrinityAngleSolver")

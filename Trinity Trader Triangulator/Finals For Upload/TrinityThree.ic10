@@ -1,0 +1,61 @@
+InitWaitLoop:
+    yield
+    get r12 db 12
+    beqz r12 InitWaitLoop
+Init:
+    move r0 0
+    get r1 db r0
+    move r0 1
+    get r2 db r0
+    move r0 2
+    get r3 db r0
+    move r0 3
+    get r4 db r0
+    move r0 4
+    get r5 db r0
+    move r0 5
+    get r6 db r0
+    move r0 6
+    get r7 db r0
+    move r0 7
+    get r8 db r0
+    move r0 8
+    get r9 db r0
+    mul r10 r4 r6
+    mul r11 r5 r5
+    sub r10 r10 r11
+    mul r11 r2 r6
+    mul r12 r3 r5
+    sub r11 r12 r11
+    mul r12 r2 r5
+    mul r13 r3 r4
+    sub r12 r12 r13
+    mul r13 r1 r6
+    mul r14 r3 r3
+    sub r13 r13 r14
+    mul r14 r2 r3
+    mul r15 r1 r5
+    sub r14 r14 r15
+    mul r15 r1 r4
+    mul r0 r2 r2
+    sub r15 r15 r0
+    mul r0 r1 r10
+    mul r5 r2 r11
+    add r0 r0 r5
+    mul r5 r3 r12
+    add r0 r0 r5
+    lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinityFour") ReferenceId 1
+    put r5 0 r10
+    put r5 1 r11
+    put r5 2 r12
+    put r5 3 r13
+    put r5 4 r14
+    put r5 5 r15
+    put r5 6 r0
+    put r5 7 r7
+    put r5 8 r8
+    put r5 9 r9
+    yield
+    put r5 12 1
+    put db 12 0
+j InitWaitLoop

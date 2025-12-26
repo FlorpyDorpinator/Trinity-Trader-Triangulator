@@ -1,0 +1,127 @@
+Booting:
+put db 511 1
+add r4 1 r4
+bne r4 16 Main
+move r4 0
+put db 511 2
+Booting2:
+add r4 1 r4
+bne r4 9 Main
+move r4 0
+put db 511 5
+move r4 0
+move r2 77
+get r1 db r2
+CheckChipHousing:
+lbn r0 HASH("StructureCircuitHousingCompact") r1 ReferenceId 1
+bdns r0 ChipError
+sub r2 r2 1
+get r1 db r2
+beq r2 69 OSNominal
+j CheckChipHousing
+ChipError:
+put db 511 3
+add r4 1 r4
+bne r4 18 Main
+move r4 0
+j CheckChipHousing
+OSNominal:
+put db 511 4
+add r4 1 r4
+bne r4 12 Main
+put db 511 5
+j Main
+TraderChosen:
+lbn r0 HASH("StructureCircuitHousingCompact") HASH("TrinityPolynomial") ReferenceId 1
+lb r3 HASH("StructureLogicDial") Setting 2
+add r3 1 r3
+put r0 400 r3
+put r0 14 2
+j ra
+InterrogateAsk:
+lbn r3 HASH("StructureLogicButton") HASH("Reset") Activate Maximum
+beq r3 1 ResetSystem
+lbn r3 HASH("StructureLogicButton") HASH("Enter") Activate Maximum
+beq r3 0 ra
+put db 511 12
+sb HASH("StructureLargeSatelliteDish") Setting 50000
+jal Main
+lb r3 HASH("StructureLargeSatelliteDish") SignalID Maximum
+brltz r3 -2
+sb HASH("StructureLargeSatelliteDish") Activate 1
+jal Main
+lb r3 HASH("StructureLargeSatelliteDish") InterrogationProgress Maximum
+yield
+brne r3 1 -3
+CallDownAsk:
+put db 511 13
+jal Main
+lbn r3 HASH("StructureLogicButton") HASH("Reset") Activate Maximum
+beq r3 1 ResetSystem
+lbn r3 HASH("StructureLogicButton") HASH("Enter") Activate Maximum
+beq r3 0 CallDownAsk
+Approaching:
+put db 511 14
+jal Main
+sb HASH("StructureSatelliteDish") Activate 1
+add r4 1 r4
+bneal r4 40 Approaching
+move r4 0
+ResetSystem:
+yield
+put db 511 5
+lbn r3 2037291645 HASH("TrinitySearch") ReferenceId Maximum
+put r3 12 1
+Main:
+move r0 ra
+get r15 db 511
+beq r15 0 ResetSystem
+beqal r15 6 TraderChosen
+beqal r15 11 InterrogateAsk
+bneal r15 r14 LoadNewMessage
+beqzal r11 StringGet
+srl r12 r11 40
+brnez r12 3
+move r12 STR(" ")
+beq r5 r12 StringGet
+sll r13 r13 8
+ins r13 0 8 r12
+sll r11 r11 8
+add r6 r6 1
+beq r6 6 StringGet
+beq r5 r12 StringGet
+sbn HASH("StructureConsoleLED1x3") HASH("TrinityOS") Setting r13
+yield
+beq r15 1 Booting
+beq r15 2 Booting2
+beq r15 4 OSNominal
+beq r15 12 r0
+beq r15 13 r0
+beq r15 14 r0
+j Main
+LoadNewMessage:
+move r9 0
+move r10 0
+move r7 0
+get r8 db r15
+move sp r8
+move r14 r15
+j ra
+StringGet:
+move r6 0
+pop r11
+beqz r10 LoadPartCount
+brne r7 sp 2
+j LoopMessage
+j ra
+LoadPartCount:
+move r10 r11
+move r9 sp
+move r11 0
+sub r7 r9 r10
+sub r7 r7 1
+j StringGet
+LoopMessage:
+move sp r9
+move r11 0
+j StringGet

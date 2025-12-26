@@ -1,0 +1,119 @@
+# Inverse Polynomial Calculator (Monotonic Table Inversion)
+# Converts a desired true angle R (DB[0]) back to the dish setting S that would
+# have produced it using the same table (S=0..90) stored at DB[128..218].
+#
+# Inputs:
+#   DB[0] = R_target (desired true/corrected angle)
+#   DB[3] = mode (0 => linear interpolation, >=0.5 => step / lowest S)
+#   DB[12] = trigger (writer sets to 1 to run; this script clears to 0 when done)
+# Table (already loaded by Polynomial Stack Load):
+#   DB[128 + S] = true angle at integer S (0..90)
+# Outputs:
+#   DB[1] = S (result setting, fractional if interpolated)
+#   DB[2] = alpha (fraction within interval; 0 in step mode)
+#
+# Procedure:
+#   1. Clamp R_target to [table[0], table[90]]
+#   2. Find smallest n such that table[n+1] >= R_target (or n=90)
+#   3. Step mode => S=n, alpha=0
+#      Linear mode => alpha=(R - v0)/(v1 - v0); S=n+alpha
+#   4. Clamp S to [0,90]
+
+put db 12 0              # ensure trigger starts cleared
+move r12 0               # init trigger reg for linter
+move r4 0                # pre-init general-use reg
+move r2 0                # init r2 to satisfy analyzer
+
+InitWaitLoop:
+    yield
+    get r12 db 12        # r12 = trigger
+    beqz r12 InitWaitLoop # wait until non-zero
+
+Start:
+    # r1 = R_target
+    move r0 0
+    get r1 db r0
+
+    # Base address & endpoints
+    move r8 128          # r8 = base
+    get r2 db r8         # r2 = table[0]
+    move r0 218          # 128 + 90
+    get r3 db r0         # r3 = table[90]
+
+    # Clamp R_target
+    max r1 r1 r2
+    min r1 r1 r3
+
+    # Mode & step flag
+    move r0 3
+    get r4 db r0         # r4 = mode
+    move r5 0.5
+    sge r6 r4 r5         # r6 = step flag (1 => step)
+
+    # n search init
+    move r7 0            # n
+
+FindInterval:
+    add r0 r8 r7         # address table[n]
+    get r10 db r0        # r10 = v0
+    add r11 r7 1         # n+1
+    move r2 90
+    min r11 r11 r2       # clamp at 90
+    add r12 r8 r11       # address table[n+1]
+    get r13 db r12       # r13 = v1
+    slt r14 r13 r1       # if v1 < R_target keep searching
+    beqz r14 IntervalFound
+    add r7 r7 1
+    blt r7 90 FindInterval
+
+IntervalFound:
+    # Step mode?
+    bnez r6 StepMode
+
+    # Interpolation
+    sub r14 r13 r10      # denom = v1 - v0
+    move r5 0.000001     # epsilon reuse r5
+    slt r4 r14 r5        # r4=1 if denom < eps
+    bnez r4 ZeroSpan
+    sub r5 r1 r10        # numerator = R - v0
+    div r15 r5 r14       # r15 = alpha
+    # clamp alpha to [0,1]
+    move r2 0
+    max r15 r15 r2
+    move r2 1
+    min r15 r15 r2
+    add r0 r7 r15        # S = n + alpha
+    j Store
+
+ZeroSpan:
+    move r15 0           # alpha = 0
+    move r0 r7           # S = n
+    j Store
+StepMode:
+    move r15 0           # alpha = 0
+    move r0 r7           # S = n
+
+Store:
+    # Clamp S to [0,90]
+    move r4 0
+    max r0 r0 r4
+    move r4 90
+    min r0 r0 r4
+    # Output
+    move r4 1
+    put db r4 r0         # DB[1] = S
+    move r4 2
+    put db r4 r15        # DB[2] = alpha
+    # Reset trigger
+    move r4 12
+    put db r4 0
+    lbn r5 HASH("StructureCircuitHousingCompact") HASH("TrinitySearch") ReferenceId 1
+    put r5 44 r0
+    get r0 db 43
+    put r5 43 r0
+    yield
+    yield
+    yield
+    yield
+    put r5 12 1
+    j InitWaitLoop
